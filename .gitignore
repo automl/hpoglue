@@ -1,0 +1,17 @@
+data/
+__pycache__/
+results/
+new_env/
+SMAC/
+Optimizers_cache/
+build/**
+hpo-glue-output/
+.mypy_cache
+.ruff_cache
+data
+configs
+*.parquet
+*.egg-info
+typings
+.ipynb_checkpoints
+.venv

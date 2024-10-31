@@ -1,0 +1,219 @@
+[project]
+name = "hpo_glue"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2,<3",
+  "tqdm", 
+  "more_itertools",
+  "ConfigSpace>=1.0",
+  ]
+authors = [
+  { name = "Soham Basu", email = "soham.basu07@gmail.com" },
+  { name = "Eddie Bergman", email = "eddiebergmanhs@gmail.com" },
+  { name = "Neeratyoy Malik", email = "neeratyoy@gmail.com" },
+]
+readme = "README.md"
+description = "A lightweight framework for benchmarking HPO algorithms"
+classifiers = [
+  'Intended Audience :: Science/Research',
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: BSD License',
+  'Programming Language :: Python',
+  'Topic :: Software Development',
+  'Topic :: Scientific/Engineering',
+  'Operating System :: POSIX',
+  'Operating System :: Unix',
+  'Operating System :: MacOS',
+  'Programming Language :: Python :: 3',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+]
+license = { file = "LICENSE" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hpo_glue"]
+exclude = ["lib", "tests"]
+namespaces = false
+
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pre-commit"]
+extra = ["ipykernel"]
+
+[project.urls]
+source = "https://github.com/Sohambasu07/hpo_glue/"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+output-format = "full"
+
+[tool.ruff.lint]
+# Extend what ruff is allowed to fix, even it it may break
+# This is okay given we use it all the time and it ensures
+# better practices. Would be dangerous if using for first
+# time on established project.
+extend-safe-fixes = ["ALL"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+select = [
+  "A",
+  # "ANN", # Handled by mypy
+  "ARG",
+  "B",
+  "BLE",
+  "COM",
+  "C4",
+  "D",
+  # "DTZ",  # One day I should know how to utilize timezones and dates...
+  "E",
+  # "EXE", Meh
+  "ERA",
+  "F",
+  "FBT",
+  "I",
+  # "ISC",  # Favours implicit string concatenation
+  "INP",
+  # "INT", # I don't understand this one
+  "N",
+  "NPY",
+  "PD",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "PIE",
+  "PT",
+  "PTH",
+  # "PYI", # Specific to .pyi files for type stubs
+  "Q",
+  "PGH004",
+  "RET",
+  "RUF",
+  "C90",
+  "S",
+  # "SLF",    # Private member accessed (sure, it's python)
+  "SIM",
+  # "TRY", # Good in principle, would take a lot of work to statisfy
+  "T10",
+  "T20",
+  "TID",
+  "TCH",
+  "UP",
+  "N",
+  "W",
+  "YTT",
+]
+
+ignore = [
+  "A001",    # Shadowing a builtin default (`id`)
+  "A002",    # Shadowing a builtin default (`id`)
+  "D100",    # Missing module level documentation
+  "D104",    # Missing docstring in public package
+  "D105",    # Missing docstring in magic mthod
+  "D203",    # 1 blank line required before class docstring
+  "D205",    # 1 blank line between summary and description
+  "D401",    # First line of docstring should be in imperative mood
+  "N806",    # Variable X in function should be lowercase
+  "N801",    # Use `CapWords` convention
+  "E731",    # Do not assign a lambda expression, use a def
+  "A003",    # Shadowing a builtin
+  "S101",    # Use of assert detected.
+  "W292",    # No newline at end of file
+  "PLC1901", # "" can be simplified to be falsey
+  "TCH003",  # Move stdlib import into TYPE_CHECKING
+  "B010",    # Do not use `setattr`
+  "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
+  "COM812",  # Conflicts with formatter
+  # These tend to be lighweight and confuse pyright
+]
+
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+  "docs"
+]
+
+# Exclude a variety of commonly ignored directories.
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I002"]
+"docs/*" = ["INP001"]
+"*.ipynb" = ["E501", "I002", "T201"]
+
+
+[tool.ruff.lint.isort]
+known-first-party = ["hpo_glue"]
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+force-wrap-aliases = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 10 # Changed from default of 5
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["hpo_glue"]
+
+show_error_codes = true
+
+warn_unused_configs = true # warn about unused [tool.mypy] lines
+
+follow_imports = "normal"      # Type check top level api code we use from imports
+ignore_missing_imports = false # prefer explicit ignores
+
+disallow_untyped_defs = true       # All functions must have types
+disallow_untyped_decorators = true # ... even decorators
+disallow_incomplete_defs = true    # ...all types
+
+no_implicit_optional = true
+check_untyped_defs = true
+
+warn_return_any = true
+
+
+[[tool.mypy.overrides]]
+module = ["*"]
+disallow_untyped_defs = false          # Sometimes we just want to ignore verbose types
+disallow_untyped_decorators = false    # Test decorators are not properly typed
+disallow_incomplete_defs = false       # Sometimes we just want to ignore verbose types
+disable_error_code = ["var-annotated"]
+
+[[tool.mypy.overrides]]
+module = [
+  "sklearn.*",
+  "ConfigSpace.*",
+  "pandas.*",
+  "more_itertools.*",
+  "dask_jobqueue.*",
+  "wandb.*",
+  "threadpoolctl.*",
+  "loky.*",
+  "metahyper.*",
+  "neps.*",
+]
+ignore_missing_imports = true
