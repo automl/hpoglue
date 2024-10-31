@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from hpo_glue._run import _run
-from hpo_glue.problem import Problem
+from hpoglue._run import _run
+from hpoglue.problem import Problem
 
 if TYPE_CHECKING:
-    from hpo_glue.benchmark import BenchmarkDescription
-    from hpo_glue.optimizer import Optimizer
+    from hpoglue.benchmark import BenchmarkDescription
+    from hpoglue.optimizer import Optimizer
 
 
 def run_glue(

@@ -8,17 +8,17 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
 
 import pandas as pd
 
-from hpo_glue.config import Config
-from hpo_glue.env import Env
-from hpo_glue.optimizer import Optimizer
-from hpo_glue.result import Result
+from hpoglue.config import Config
+from hpoglue.env import Env
+from hpoglue.optimizer import Optimizer
+from hpoglue.result import Result
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
-    from hpo_glue.fidelity import Fidelity
-    from hpo_glue.measure import Measure
-    from hpo_glue.query import Query
+    from hpoglue.fidelity import Fidelity
+    from hpoglue.measure import Measure
+    from hpoglue.query import Query
 
     class TrajectoryF(Protocol):
         def __call__(

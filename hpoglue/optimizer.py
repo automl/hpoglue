@@ -5,18 +5,18 @@ from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
-from hpo_glue.constants import DEFAULT_RELATIVE_EXP_DIR
-from hpo_glue.env import Env
+from hpoglue.constants import DEFAULT_RELATIVE_EXP_DIR
+from hpoglue.env import Env
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
-    from hpo_glue.benchmarks import BenchmarkDescription
-    from hpo_glue.budget import BudgetType
-    from hpo_glue.config import Config
-    from hpo_glue.problem import Problem, Run
-    from hpo_glue.query import Query
-    from hpo_glue.result import Result
+    from hpoglue.benchmarks import BenchmarkDescription
+    from hpoglue.budget import BudgetType
+    from hpoglue.config import Config
+    from hpoglue.problem import Problem, Run
+    from hpoglue.query import Query
+    from hpoglue.result import Result
 
 
 class Optimizer(ABC):
@@ -112,7 +112,7 @@ class Optimizer(ABC):
                 * "raise": Raise an error.
                 * "ignore": Ignore the error and continue.
         """
-        from hpo_glue._problem_generators import _generate_problem_set
+        from hpoglue._problem_generators import _generate_problem_set
 
         opt_with_hps: list[tuple[type[Optimizer], Mapping[str, Any]]]
         match hyperparameters:

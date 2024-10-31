@@ -1,5 +1,5 @@
 [project]
-name = "hpo_glue"
+name = "hpoglue"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
@@ -33,7 +33,7 @@ license = { file = "LICENSE" }
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["hpo_glue"]
+include = ["hpoglue"]
 exclude = ["lib", "tests"]
 namespaces = false
 
@@ -42,7 +42,7 @@ dev = ["ruff", "mypy", "pre-commit"]
 extra = ["ipykernel"]
 
 [project.urls]
-source = "https://github.com/Sohambasu07/hpo_glue/"
+source = "https://github.com/automl/hpoglue/"
 
 [tool.ruff]
 target-version = "py310"
@@ -162,7 +162,7 @@ exclude = [
 
 
 [tool.ruff.lint.isort]
-known-first-party = ["hpo_glue"]
+known-first-party = ["hpoglue"]
 no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
 combine-as-imports = true
@@ -177,7 +177,7 @@ max-args = 10 # Changed from default of 5
 
 [tool.mypy]
 python_version = "3.10"
-packages = ["hpo_glue"]
+packages = ["hpoglue"]
 
 show_error_codes = true
 

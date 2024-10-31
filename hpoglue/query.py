@@ -5,7 +5,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from hpo_glue.config import Config
+    from hpoglue.config import Config
 
 
 @dataclass(kw_only=True)

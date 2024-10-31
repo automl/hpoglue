@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 from ConfigSpace import ConfigurationSpace, Float
 
-from hpo_glue.benchmark import FunctionalBenchmark
-from hpo_glue.measure import Measure
-from hpo_glue.result import Result
+from hpoglue.benchmark import FunctionalBenchmark
+from hpoglue.measure import Measure
+from hpoglue.result import Result
 
 if TYPE_CHECKING:
 
-    from hpo_glue.query import Query
+    from hpoglue.query import Query
 
 def branin_bench() -> FunctionalBenchmark:
     branin_space = ConfigurationSpace()

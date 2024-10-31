@@ -6,7 +6,7 @@ from lib.benchmarks.ackley import ackley_bench
 from lib.benchmarks.branin import branin_bench
 
 if TYPE_CHECKING:
-    from hpo_glue.benchmark import BenchmarkDescription
+    from hpoglue.benchmark import BenchmarkDescription
 
 BENCHMARKS: dict[str, BenchmarkDescription] = {}
 BENCHMARKS["ackley"] = ackley_bench().description

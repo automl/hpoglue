@@ -9,8 +9,8 @@ import numpy as np
 if TYPE_CHECKING:
     import pandas as pd
 
-    from hpo_glue.config import Config
-    from hpo_glue.query import Query
+    from hpoglue.config import Config
+    from hpoglue.query import Query
 
 
 @dataclass(kw_only=True)

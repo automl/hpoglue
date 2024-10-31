@@ -12,17 +12,17 @@ from typing import TYPE_CHECKING, Literal
 import pandas as pd
 from tqdm import TqdmWarning, tqdm
 
-from hpo_glue.budget import CostBudget, TrialBudget
-from hpo_glue.fidelity import Fidelity
+from hpoglue.budget import CostBudget, TrialBudget
+from hpoglue.fidelity import Fidelity
 
 if TYPE_CHECKING:
-    from hpo_glue.problem import Problem
-from hpo_glue.utils import rescale
+    from hpoglue.problem import Problem
+from hpoglue.utils import rescale
 
 if TYPE_CHECKING:
-    from hpo_glue.benchmark import Benchmark
-    from hpo_glue.optimizer import Optimizer
-    from hpo_glue.result import Result
+    from hpoglue.benchmark import Benchmark
+    from hpoglue.optimizer import Optimizer
+    from hpoglue.result import Result
 
 logger = logging.getLogger(__name__)
 

@@ -9,18 +9,18 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar
 
 from more_itertools import roundrobin, take
 
-from hpo_glue.budget import CostBudget, TrialBudget
-from hpo_glue.config import Config
-from hpo_glue.constants import DEFAULT_RELATIVE_EXP_DIR
-from hpo_glue.fidelity import Fidelity, ListFidelity, RangeFidelity
-from hpo_glue.measure import Measure
-from hpo_glue.optimizer import Optimizer
-from hpo_glue.query import Query
-from hpo_glue.result import Result
+from hpoglue.budget import CostBudget, TrialBudget
+from hpoglue.config import Config
+from hpoglue.constants import DEFAULT_RELATIVE_EXP_DIR
+from hpoglue.fidelity import Fidelity, ListFidelity, RangeFidelity
+from hpoglue.measure import Measure
+from hpoglue.optimizer import Optimizer
+from hpoglue.query import Query
+from hpoglue.result import Result
 
 if TYPE_CHECKING:
-    from hpo_glue.benchmark import BenchmarkDescription
-    from hpo_glue.budget import BudgetType
+    from hpoglue.benchmark import BenchmarkDescription
+    from hpoglue.budget import BudgetType
 
 logger = logging.getLogger(__name__)
 
@@ -366,7 +366,7 @@ class Problem:
     #     Returns:
     #         An experiment object with the generated problems.
     #     """
-    #     from hpo_glue.run import Run
+    #     from hpoglue.run import Run
 
     #     _seeds = seeds
     #     # if not isinstance(seeds, Iterable):
@@ -462,7 +462,7 @@ class Problem:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Problem:
-        from hpo_glue.benchmarks import BENCHMARKS
+        from hpoglue.benchmarks import BENCHMARKS
 
         if data["benchmark"] not in BENCHMARKS:
             raise ValueError(

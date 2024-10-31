@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 from ConfigSpace import ConfigurationSpace
 
-from hpo_glue.config import Config
-from hpo_glue.optimizer import Optimizer
-from hpo_glue.problem import Problem
-from hpo_glue.query import Query
+from hpoglue.config import Config
+from hpoglue.optimizer import Optimizer
+from hpoglue.problem import Problem
+from hpoglue.query import Query
 
 if TYPE_CHECKING:
-    from hpo_glue.result import Result
+    from hpoglue.result import Result
 
 
 class RandomSearch(Optimizer):

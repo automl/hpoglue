@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 WHEN_MODULE_INITIALIZED = datetime.now().isoformat()
 
-GLUE_REPO = "github.com/Sohambasu07/hpo_glue.git"
-GLUE_PYPI = "hpo_glue"
-GLUE_GIT_SSH_INSTALL = "git+ssh://git@github.com/Sohambasu07/hpo_glue.git"
+GLUE_REPO = "github.com/automl/hpoglue.git"
+GLUE_PYPI = "hpoglue"
+GLUE_GIT_SSH_INSTALL = "git+ssh://git@github.com/automl/hpoglue.git"
 
 
 @dataclass(frozen=True)
@@ -91,7 +91,7 @@ def _get_current_installed_python_version() -> str:
 
 
 def get_current_installed_hpo_glue_version() -> str:
-    cmd = ["pip", "show", "hpo_glue"]
+    cmd = ["pip", "show", "hpoglue"]
     logger.debug(cmd)
     output = subprocess.run(
         cmd,  # noqa: S603
@@ -104,7 +104,7 @@ def get_current_installed_hpo_glue_version() -> str:
         if "Version: " in line:
             return line.split(": ")[1]
 
-    raise RuntimeError(f"Could not find hpo_glue version in {lines}.")
+    raise RuntimeError(f"Could not find hpoglue version in {lines}.")
 
 
 @dataclass
