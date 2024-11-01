@@ -184,7 +184,7 @@ class Problem:
 
 
     @classmethod
-    def problem(  # noqa: C901, PLR0912
+    def problem(  # noqa: C901, PLR0912, PLR0915
         cls,
         *,
         optimizer: type[Optimizer] | OptWithHps,
@@ -210,6 +210,7 @@ class Problem:
             objectives: The number of objectives for the problem.
             costs: The number of costs for the problem.
             multi_objective_generation: The method to generate multiple objectives.
+            precision: The precision to use for the problem.
         """
         _fid: tuple[str, Fidelity] | Mapping[str, Fidelity] | None
         match fidelities:
@@ -368,6 +369,7 @@ class Problem:
         return (self.benchmark.name, self.budget, _obj, _fid, _cost)
 
     def to_dict(self) -> dict[str, Any]:
+        """Convert the problem instance to a dictionary."""
         return {
             "objective": (
                 list(self.objective.keys())
@@ -394,17 +396,28 @@ class Problem:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Problem:
-        from hpo_glue.benchmarks import BENCHMARKS
+    def from_dict(  # noqa: C901, PLR0912
+        cls,
+        data: dict[str, Any],
+        benchmarks_dict: Mapping[str, BenchmarkDescription],
+    ) -> Problem:
+        """Create a Problem instance from a dictionary.
 
-        if data["benchmark"] not in BENCHMARKS:
+        Args:
+            data: A dictionary containing the problem data.
+            benchmarks_dict: A mapping of benchmark names to BenchmarkDescription instances.
+
+        Returns:
+            A Problem instance created from the dictionary data.
+        """
+        if data["benchmark"] not in benchmarks_dict:
             raise ValueError(
                 f"Benchmark {data['benchmark']} not found in benchmarks!"
                 " Please make sure your benchmark is registed in `BENCHMARKS`"
                 " before loading/parsing."
             )
 
-        benchmark = BENCHMARKS[data["benchmark"]]
+        benchmark = benchmarks_dict[data["benchmark"]]
         _obj = data["objective"]
         match _obj:
             case str():
