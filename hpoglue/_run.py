@@ -109,7 +109,7 @@ def _run(
             total=budget_total,
             minimum_fidelity_normalized_value=minimum_normalized_fidelity,
         ):
-            result_df = _run_problem_with_trial_budget(
+            result_df, history = _run_problem_with_trial_budget(
                 run_name=run_name,
                 optimizer=opt,
                 benchmark=benchmark,
@@ -131,7 +131,7 @@ def _run(
         optimizer=problem.optimizer.name,
         optimizer_hps=problem.optimizer_hyperparameters,
         benchmark=problem.benchmark.name
-    )
+    ), history
 
 
 def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
@@ -231,7 +231,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                             raise NotImplementedError("Continue not yet implemented!") from e
                         case _:
                             raise RuntimeError(f"Invalid value for `on_error`: {on_error}") from e
-    return pd.DataFrame([res._to_dict() for res in history])
+    return pd.DataFrame([res._to_dict() for res in history]), history
 
 
 def _trial_budget_cost(
