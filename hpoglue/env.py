@@ -90,11 +90,12 @@ def _get_current_installed_python_version() -> str:
     return f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
-def get_current_installed_hpo_glue_version() -> str:
+def get_current_installed_hpoglue_version() -> str:
+    """Retrieve the currently installed version of hpoglue."""
     cmd = ["pip", "show", "hpoglue"]
     logger.debug(cmd)
-    output = subprocess.run(
-        cmd,  # noqa: S603
+    output = subprocess.run(  # noqa: S603
+        cmd,
         check=True,
         capture_output=True,
         text=True,
