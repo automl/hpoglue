@@ -18,12 +18,32 @@ GLUE_PYPI = "hpoglue"
 GLUE_GIT_SSH_INSTALL = "git+ssh://git@github.com/automl/hpoglue.git"
 
 
-@dataclass(frozen=True)
+@dataclass
 class Env:
     name: str
     python_version: str = field(default="3.10", repr=False)
     requirements: tuple[str, ...] = field(default=(), repr=False)
     post_install: tuple[str, ...] = field(default=(), repr=False)
+
+    def __post_init__(self) -> None:
+        match self.requirements:
+            case tuple():
+                pass
+            case str():
+                self.requirements = (self.requirements,)
+            case None:
+                self.requirements = ()
+            case _:
+                raise ValueError(f"Invalid requirements type: {type(self.requirements)}, expected tuple!")
+        match self.post_install:
+            case tuple():
+                pass
+            case str():
+                self.post_install = (self.post_install,)
+            case None:
+                self.post_install = ()
+            case _:
+                raise ValueError(f"Invalid post_install type: {type(self.post_install)}, expected tuple!")
 
     @classmethod
     def empty(cls) -> Env:
