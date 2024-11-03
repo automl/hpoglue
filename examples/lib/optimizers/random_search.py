@@ -31,7 +31,7 @@ class RandomSearch(Optimizer):
         tabular=False,
     )
 
-    mem_req_mb = 100  # noqa: N815
+    mem_req_mb = 1024
 
     def __init__(
         self,
@@ -63,7 +63,7 @@ class RandomSearch(Optimizer):
             case ConfigurationSpace():
                 config = Config(
                     config_id=str(self._counter),
-                    values=self.config_space.sample_configuration().get_dictionary(),
+                    values=dict(self.config_space.sample_configuration())
                 )
             case list():
                 index = int(self.rng.integers(len(self.config_space)))
