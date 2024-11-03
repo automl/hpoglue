@@ -118,7 +118,7 @@ class Problem:
     mem_req_mb: int = field(init=False)
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
-        self.mem_req_mb = self.benchmark.mem_req_mb
+        self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
         self.is_tabular = self.benchmark.is_tabular
         self.is_manyfidelity: bool
         self.is_multifidelity: bool
@@ -476,10 +476,10 @@ class Problem:
     class Support:
         """The support of an optimizer for a problem."""
 
-        objectives: tuple[Literal["single", "many"], ...]
-        fidelities: tuple[Literal[None, "single", "many"], ...]
-        cost_awareness: tuple[Literal[None, "single", "many"], ...]
-        tabular: bool
+        objectives: tuple[Literal["single", "many"], ...] = field(default=("single",))
+        fidelities: tuple[Literal[None, "single", "many"], ...] = field(default=(None,))
+        cost_awareness: tuple[Literal[None, "single", "many"], ...] = field(default=(None,))
+        tabular: bool = False
 
         def check_opt_support(self, who: str, *, problem: Problem) -> None:
             """Check if the problem is supported by the support."""
