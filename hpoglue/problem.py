@@ -191,7 +191,7 @@ class Problem:
         optimizer_hyperparameters: Mapping[str, int | float] = {},
         benchmark: BenchmarkDescription,
         budget: BudgetType | int,
-        fidelities: int = 0,
+        fidelities: int | None = None,
         objectives: int = 1,
         costs: int = 0,
         multi_objective_generation: Literal["mix_metric_cost", "metric_only"] = "mix_metric_cost",
@@ -217,6 +217,8 @@ class Problem:
             case int() if fidelities < 0:
                 raise ValueError(f"{fidelities=} must be >= 0")
             case 0:
+                _fid = None
+            case None:
                 _fid = None
             case 1:
                 if benchmark.fidelities is None:
