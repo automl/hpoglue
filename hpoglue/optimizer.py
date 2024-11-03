@@ -38,7 +38,7 @@ class Optimizer(ABC):
     If left as `None`, the currently activated environemnt will be used.
     """
 
-    mem_req_mb: ClassVar[int]
+    mem_req_mb: ClassVar[int] = 1024
     """The memory requirement of the optimizer in mb."""
 
     @abstractmethod

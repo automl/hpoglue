@@ -66,7 +66,7 @@ class BenchmarkDescription:
     env: Env = field(default_factory=Env.empty)
     """The environment needed to run this benchmark."""
 
-    mem_req_mb: int
+    mem_req_mb: int = 1024
     """The memory requirement of the benchmark in mb."""
 
 
@@ -413,7 +413,7 @@ class FunctionalBenchmark:
         test_metrics: Mapping[str, Measure] | None = None,
         config_space: ConfigurationSpace | list[Config] | None = None,
         env: Env = Env.empty,
-        mem_req_mb: int = 100,
+        mem_req_mb: int = 1024,
     ):
         """Create a functional benchmark.
 
