@@ -39,7 +39,7 @@ namespaces = false
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pre-commit"]
-extra = ["ipykernel"]
+notebook = ["ipykernel"]
 
 [project.urls]
 source = "https://github.com/automl/hpoglue/"

@@ -1,18 +1,31 @@
 # hpoglue
 HPO tool with a modular API that allows for the easy interfacing of a new Optimizer and a new Benchmark
 
-## Minimal Example
+## Installation
 
-```python
-from hpo_glue import run_glue
-df = run_glue(
-    run_name="hpo_glue_ex"
-    optimizer = ...
-    benchmark = ...
-    seed = 1
-    budget = 50
-)
+### Create a Virtual Environment using Venv
+```bash
+python -m venv hpoglue_env
+source hpoglue_env/bin/activate
 ```
+### Installing from PyPI
+
+```bash
+pip install hpoglue
+```
+
+> [!TIP]
+> * `pip install hpoglue["notebook"]` - For usage in a notebook
+
+### Installation from source
+
+```bash
+git clone https://github.com/automl/hpoglue.git
+cd hpoglue
+
+pip install -e . # -e for editable install
+```
+
 
 ## Example Optimizer Definition
 
@@ -20,15 +33,18 @@ df = run_glue(
 from ConfigSpace import ConfigurationSpace
 from hpoglue.config import Config
 from hpoglue.optimizer import Optimizer
+from hpoglue.problem import Problem
 from hpoglue.query import Query
 
 
 class RandomSearch(Optimizer):
     name = "RandomSearch"
+    support = Problem.Support()
     def __init__(self, problem, seed, working_directory, config_space):
         self.config_space = config_space
         self.config_space.seed(seed)
         self.problem = problem
+        self._counter = 0
 
     def ask(self):
         self._counter += 1
@@ -38,7 +54,7 @@ class RandomSearch(Optimizer):
         )
         return Query(config=config, fidelity=None)
 
-    def tell(self, result) -> None:
+    def tell(self, result):
         return
 ```
 
@@ -62,7 +78,7 @@ def ackley_bench():
         query=ackley,
     )
 
-def ackley(query: Query):
+def ackley(query):
     x = np.array(query.config.to_tuple())
     n_var=2
     a=20
@@ -76,4 +92,18 @@ def ackley(query: Query):
         fidelity=None,
         values={"value": out},
     )
+```
+
+
+## Minimal Example to run hpoglue
+
+```python
+from hpoglue.run_glue import run_glue
+df,_ = run_glue(
+    run_name="hpo_glue_ex",
+    optimizer = RandomSearch,
+    benchmark = ackley_bench().description,
+    seed = 1,
+    budget = 50
+)
 ```
