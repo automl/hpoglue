@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+import pandas as pd
+
 from hpoglue._run import _run
 from hpoglue.problem import Problem
 
@@ -18,7 +20,7 @@ def run_glue(
     run_name: str | None = None,
     budget=50,
     seed=0,
-):
+) -> pd.DataFrame:
     """Run the glue function with the given optimizer, benchmark, and hyperparameters.
 
     Args:
@@ -30,7 +32,7 @@ def run_glue(
         seed (int, optional): The seed for random number generation. Defaults to 0.
 
     Returns:
-        The result of the _run function.
+        The result of the _run function as a pandas DataFrame.
     """
     problem = Problem.problem(
         optimizer=optimizer,
@@ -39,8 +41,16 @@ def run_glue(
         budget=budget,
     )
 
-    return _run(
+    history = _run(
         run_name=run_name,
         problem=problem,
         seed=seed,
+    )
+
+    _df = pd.DataFrame([res._to_dict() for res in history])
+    return _df.assign(
+        seed=seed,
+        optimizer=problem.optimizer.name,
+        optimizer_hps=problem.optimizer_hyperparameters,
+        benchmark=problem.benchmark.name
     )
