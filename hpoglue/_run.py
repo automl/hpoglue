@@ -9,7 +9,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-import pandas as pd
 from tqdm import TqdmWarning, tqdm
 
 from hpoglue.budget import CostBudget, TrialBudget
@@ -93,7 +92,7 @@ def _run(
     on_error: Literal["raise", "continue"] = "raise",
     progress_bar: bool = False,
     continuations: bool = False
-) -> pd.DataFrame:
+) -> list[Result]:
     run_name = run_name if run_name is not None else problem.name
     benchmark = problem.benchmark.load(problem.benchmark)
     opt = problem.optimizer(
@@ -109,7 +108,7 @@ def _run(
             total=budget_total,
             minimum_fidelity_normalized_value=minimum_normalized_fidelity,
         ):
-            result_df, history = _run_problem_with_trial_budget(
+            history = _run_problem_with_trial_budget(
                 run_name=run_name,
                 optimizer=opt,
                 benchmark=benchmark,
@@ -126,12 +125,7 @@ def _run(
             raise RuntimeError(f"Invalid budget type: {problem.budget}")
 
     logger.info(f"COMPLETED running {run_name}")
-    return result_df.assign(
-        seed=seed,
-        optimizer=problem.optimizer.name,
-        optimizer_hps=problem.optimizer_hyperparameters,
-        benchmark=problem.benchmark.name
-    ), history
+    return history
 
 
 def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
@@ -145,7 +139,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
     minimum_normalized_fidelity: float,
     progress_bar: bool,
     continuations: bool = False,
-) -> pd.DataFrame:
+) -> list[Result]:
     used_budget: float = 0.0
 
     history: list[Result] = []
@@ -231,7 +225,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                             raise NotImplementedError("Continue not yet implemented!") from e
                         case _:
                             raise RuntimeError(f"Invalid value for `on_error`: {on_error}") from e
-    return pd.DataFrame([res._to_dict() for res in history]), history
+    return history
 
 
 def _trial_budget_cost(
