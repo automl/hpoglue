@@ -27,14 +27,13 @@ classifiers = [
   'Operating System :: MacOS',
   'Programming Language :: Python :: 3',
   'Programming Language :: Python :: 3.10',
-  'Programming Language :: Python :: 3.11',
 ]
 license = { file = "LICENSE" }
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["hpoglue"]
-exclude = ["lib", "tests"]
+exclude = ["examples", "tests"]
 namespaces = false
 
 [project.optional-dependencies]

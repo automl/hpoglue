@@ -1,6 +1,23 @@
 # hpoglue
 HPO tool with a modular API that allows for the easy interfacing of a new Optimizer and a new Benchmark
 
+## Minimal Example to run hpoglue
+
+```python
+from hpoglue.run_glue import run_glue
+df,_ = run_glue(
+    run_name="hpo_glue_ex",
+    optimizer = ...,
+    benchmark = ...,
+    seed = 1,
+    budget = 50
+)
+```
+
+> [!TIP]
+> * See below for examples of an [Optimizer](#example-optimizer-definition) and [Benchmark](#example-benchmark-definition)
+> * Check out [hposuite](https://github.com/automl/hposuite) for some already implemented Optimizers and Benchmarks for hpoglue
+
 ## Installation
 
 ### Create a Virtual Environment using Venv
@@ -11,7 +28,7 @@ source hpoglue_env/bin/activate
 ### Installing from PyPI
 
 ```bash
-pip install hpoglue
+pip install hpoglue # Not yet supported
 ```
 
 > [!TIP]
@@ -92,18 +109,4 @@ def ackley(query):
         fidelity=None,
         values={"value": out},
     )
-```
-
-
-## Minimal Example to run hpoglue
-
-```python
-from hpoglue.run_glue import run_glue
-df,_ = run_glue(
-    run_name="hpo_glue_ex",
-    optimizer = RandomSearch,
-    benchmark = ackley_bench().description,
-    seed = 1,
-    budget = 50
-)
 ```
