@@ -130,6 +130,11 @@ class Problem:
             self.budget.path_str,
         ]
 
+        if len(self.optimizer_hyperparameters) > 0:
+            name_parts.insert(1,
+                ",".join(f"{k}={v}" for k, v in self.optimizer_hyperparameters.items())
+            )
+
         self.is_multiobjective: bool
         match self.objective:
             case tuple():
@@ -140,7 +145,7 @@ class Problem:
                     raise ValueError("Single objective should be a tuple, not a mapping")
 
                 self.is_multiobjective = True
-                # name_parts.append("objective=" + ",".join(self.objective.keys()))
+                name_parts.append("objective=" + ",".join(self.objective.keys()))
             case _:
                 raise TypeError("Objective must be a tuple (name, measure) or a mapping")
 
