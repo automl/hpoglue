@@ -5,7 +5,7 @@ HPO tool with a modular API that allows for the easy interfacing of a new Optimi
 
 ```python
 from hpoglue.run_glue import run_glue
-df,_ = run_glue(
+df = run_glue(
     run_name="hpo_glue_ex",
     optimizer = ...,
     benchmark = ...,
@@ -16,6 +16,7 @@ df,_ = run_glue(
 
 > [!TIP]
 > * See below for examples of an [Optimizer](#example-optimizer-definition) and [Benchmark](#example-benchmark-definition)
+> * Check this example [notebook](examples/glue_demo.ipynb) for more
 > * Check out [hposuite](https://github.com/automl/hposuite) for some already implemented Optimizers and Benchmarks for hpoglue
 
 ## Installation
@@ -28,7 +29,7 @@ source hpoglue_env/bin/activate
 ### Installing from PyPI
 
 ```bash
-pip install hpoglue # Not yet supported
+pip install hpoglue
 ```
 
 > [!TIP]
