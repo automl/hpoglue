@@ -1,3 +1,8 @@
+[![image](https://img.shields.io/pypi/v/hpoglue.svg)](https://pypi.python.org/pypi/hpoglue)
+[![image](https://img.shields.io/pypi/l/hpoglue.svg)](https://pypi.python.org/pypi/hpoglue)
+[![image](https://img.shields.io/pypi/pyversions/hpoglue.svg)](https://pypi.python.org/pypi/hpoglue)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 # hpoglue
 HPO tool with a modular API that allows for the easy interfacing of a new Optimizer and a new Benchmark
 

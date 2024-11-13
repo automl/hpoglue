@@ -16,3 +16,4 @@ typings
 .ipynb_checkpoints
 .venv
 **build/
+dist/
