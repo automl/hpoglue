@@ -6,7 +6,7 @@ HPO tool with a modular API that allows for the easy interfacing of a new Optimi
 ```python
 from hpoglue.run_glue import run_glue
 df = run_glue(
-    run_name="hpo_glue_ex",
+    run_name="hpoglue_ex",
     optimizer = ...,
     benchmark = ...,
     seed = 1,
