@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from ConfigSpace import ConfigurationSpace, Float
+from ConfigSpace import ConfigurationSpace
 
 from hpoglue.benchmark import FunctionalBenchmark
 from hpoglue.measure import Measure
@@ -13,22 +13,26 @@ if TYPE_CHECKING:
 
     from hpoglue.query import Query
 
-def branin_bench() -> FunctionalBenchmark:
-    branin_space = ConfigurationSpace()
-    for i in range(2):
-        branin_space.add(Float(name=f"x{i}", bounds=[-32.768, 32.768]))
-    return FunctionalBenchmark(
-        name="branin",
-        config_space=branin_space,
-        metrics={
-            "value": Measure.metric((0.397887, np.inf), minimize=True),
-        },
-        query=branin,
-    )
 
-def branin(query: Query) -> Result:
+def branin_fn(x: np.ndarray) -> float:
+    """Compute the value of the Branin function.
 
-    x = np.array(query.config.to_tuple())
+    The Branin function is a commonly used test function for optimization algorithms.
+    It is defined as:
+
+        f(x) = a * (x2 - b * x1^2 + c * x1 - r)^2 + s * (1 - t) * cos(x1) + s
+
+    where:
+        b = 5.1 / (4.0 * pi^2)
+        c = 5.0 / pi
+        t = 1.0 / (8.0 * pi)
+
+    Args:
+        x (np.ndarray): A 2-dimensional input array where x[0] is x1 and x[1] is x2.
+
+    Returns:
+        float: The computed value of the Branin function.
+    """
     x1 = x[0]
     x2 = x[1]
     a = 1.0
@@ -37,10 +41,32 @@ def branin(query: Query) -> Result:
     r = 6.0
     s = 10.0
     t = 1.0 / (8.0 * np.pi)
-    out = a * (x2 - b * x1**2 + c * x1 - r) ** 2 + s * (1 - t) * np.cos(x1) + s
+
+    return a * (x2 - b * x1**2 + c * x1 - r) ** 2 + s * (1 - t) * np.cos(x1) + s
+
+
+def wrapped_branin(query: Query) -> Result:  # noqa: D103
+
+    y = branin_fn(
+        np.array(query.config.to_tuple())
+    )
 
     return Result(
         query=query,
         fidelity=None,
-        values={"value": out},
+        values={"value": y},
     )
+
+
+BRANIN_BENCH = FunctionalBenchmark(
+    name="branin",
+    config_space=ConfigurationSpace(
+        {
+            f"x{i}": (-32.768, 32.768) for i in range(2)
+        }
+    ),
+    metrics={
+            "value": Measure.metric((0.397887, np.inf), minimize=True),
+        },
+    query=wrapped_branin
+)

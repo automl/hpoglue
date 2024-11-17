@@ -16,6 +16,8 @@ from hpoglue.query import Query
 from hpoglue.result import Result
 
 if TYPE_CHECKING:
+    from ConfigSpace import ConfigurationSpace
+
     from hpoglue.benchmark import BenchmarkDescription
     from hpoglue.budget import BudgetType
 
@@ -92,6 +94,9 @@ class Problem:
     benchmark: BenchmarkDescription
     """The benchmark to use for this problem"""
 
+    config_space: ConfigurationSpace | list[Config] = field(init=False)
+    """The configuration space for the problem"""
+
     is_tabular: bool = field(init=False)
     """Whether the benchmark is tabular"""
 
@@ -118,6 +123,7 @@ class Problem:
     mem_req_mb: int = field(init=False)
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
+        self.config_space = self.benchmark.config_space
         self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
         self.is_tabular = self.benchmark.is_tabular
         self.is_manyfidelity: bool

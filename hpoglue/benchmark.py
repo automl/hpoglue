@@ -42,6 +42,9 @@ class BenchmarkDescription:
     name: str
     """Unique name of the benchmark."""
 
+    config_space: ConfigurationSpace | list[Config]
+    """The configuration space for the benchmark."""
+
     load: Callable[[BenchmarkDescription], Benchmark] = field(compare=False)
     """Function to load the benchmark."""
 
@@ -432,6 +435,7 @@ class FunctionalBenchmark:
         self.config_space = config_space
         self.desc = BenchmarkDescription(
             name=name,
+            config_space=config_space,
             load=partial(self.load),
             metrics=metrics,
             test_metrics=test_metrics,
