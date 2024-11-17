@@ -58,6 +58,7 @@ from hpoglue.config import Config
 from hpoglue.optimizer import Optimizer
 from hpoglue.problem import Problem
 from hpoglue.query import Query
+from pathlib import Path
 
 
 class RandomSearch(Optimizer):
@@ -75,7 +76,7 @@ class RandomSearch(Optimizer):
             working_directory: TODO
             seed: TODO
         """
-        self.config_space = problem.benchmark.config_space
+        self.config_space = problem.config_space
         self.config_space.seed(seed)
         self.problem = problem
         self._optmizer_unique_id = 0
@@ -86,7 +87,7 @@ class RandomSearch(Optimizer):
             config_id=str(self._optmizer_unique_id),
             values=dict(self.config_space.sample_configuration()),
         )
-        return Query(config=config)
+        return Query(config=config, fidelity=None)
 
     def tell(self, result: Result) -> None:
         # Update the optimizer (not needed for RandomSearch)
@@ -97,10 +98,11 @@ class RandomSearch(Optimizer):
 
 ```python
 import numpy as np
-from ConfigSpace import ConfigurationSpace, Float
+from ConfigSpace import ConfigurationSpace
 from hpoglue.benchmark import FunctionalBenchmark
 from hpoglue.measure import Measure
 from hpoglue.result import Result
+from hpoglue.query import Query
 
 
 def ackley_fn(x1: float, x2: float) -> float:
@@ -115,13 +117,26 @@ def ackley_fn(x1: float, x2: float) -> float:
     return out
 
 def wrapped_ackley(query: Query) -> Result:
-    y = ackley_fn(x1=query.config["x1"], x2=query.config["x2"])
-    return Result(query=query, values={"y": y})
+    y = ackley_fn(x1=query.config.values["x1"], x2=query.config.values["x2"])
+    return Result(query=query, fidelity=None, values={"y": y})
 
 ACKLEY_BENCH = FunctionalBenchmark(
     name="ackley",
-    config_space=ConfigurationSpace({"x1: (-32.768, 32.768), "x2": (-32.768, 32.768)}),
+    config_space=ConfigurationSpace({"x1": (-32.768, 32.768), "x2": (-32.768, 32.768)}),
     metrics={"y": Measure.metric((0.0, np.inf), minimize=True)},
     query=wrapped_ackley,
+)
+```
+
+## Run hpoglue on the examples
+
+```python
+from hpoglue.run_glue import run_glue
+df = run_glue(
+    run_name="hpoglue_demo",
+    optimizer = RandomSearch,
+    benchmark = ACKLEY_BENCH,
+    seed = 1,
+    budget = 50
 )
 ```
