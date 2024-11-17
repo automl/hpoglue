@@ -14,7 +14,7 @@ authors = [
   { name = "Neeratyoy Malik", email = "neeratyoy@gmail.com" },
 ]
 readme = "README.md"
-description = "A lightweight framework for benchmarking HPO algorithms"
+description = "HPO tool with a modular API that allows for the easy interfacing of a new Optimizer and a new Benchmark"
 classifiers = [
   'Intended Audience :: Science/Research',
   'Intended Audience :: Developers',
