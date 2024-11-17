@@ -99,7 +99,6 @@ def _run(
         problem=problem,
         working_directory=Path("./Optimizers_cache"),
         seed=seed,
-        config_space=benchmark.config_space,
         **problem.optimizer_hyperparameters,
     )
 

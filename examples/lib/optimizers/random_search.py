@@ -39,15 +39,14 @@ class RandomSearch(Optimizer):
         problem: Problem,
         seed: int,
         working_directory: Path,  # noqa: ARG002
-        config_space: ConfigurationSpace | list[Config],
     ):
         """Create a Random Search Optimizer instance for a given problem statement."""
-        match config_space:
+        match problem.config_space:
             case ConfigurationSpace():
-                self.config_space = copy.deepcopy(config_space)
+                self.config_space = copy.deepcopy(problem.config_space)
                 self.config_space.seed(seed)
             case list():
-                self.config_space = config_space
+                self.config_space = problem.config_space
             case _:
                 raise TypeError("Config space must be a ConfigSpace or a list of Configs")
 

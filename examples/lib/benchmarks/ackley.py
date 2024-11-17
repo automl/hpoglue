@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from ConfigSpace import ConfigurationSpace, Float
+from ConfigSpace import ConfigurationSpace
 
 from hpoglue.benchmark import FunctionalBenchmark
 from hpoglue.measure import Measure
@@ -13,32 +13,56 @@ if TYPE_CHECKING:
 
     from hpoglue.query import Query
 
-def ackley_bench() -> FunctionalBenchmark:
-    ackley_space = ConfigurationSpace()
-    for i in range(2):
-        ackley_space.add(Float(name=f"x{i}", bounds=[-32.768, 32.768]))
-    return FunctionalBenchmark(
-        name="ackley",
-        config_space=ackley_space,
-        metrics={
-            "value": Measure.metric((0.0, np.inf), minimize=True),
-        },
-        query=ackley,
-    )
 
-def ackley(query: Query) -> Result:
+def ackley_fn(x: np.ndarray) -> float:
+    """Compute the Ackley function.
 
-    x = np.array(query.config.to_tuple())
+    The Ackley function is a widely used benchmark function for testing optimization algorithms.
+    It is defined as follows:
+
+        f(x) = -a * exp(-b * sqrt(1/n * sum(x_i^2))) - exp(1/n * sum(cos(c * x_i))) + a + exp(1)
+
+    where:
+        - x is a numpy array of input values.
+        - n is the number of dimensions (variables), which is set to 2 in this implementation.
+        - a, b, and c are constants with typical values a=20, b=0.2, and c=2*pi.
+
+    Parameters:
+    x (np.ndarray): Input array of shape (n_var,).
+
+    Returns:
+    float: The computed value of the Ackley function.
+    """
     n_var=2
     a=20
     b=1/5
     c=2 * np.pi
     part1 = -1. * a * np.exp(-1. * b * np.sqrt((1. / n_var) * np.sum(x * x)))
     part2 = -1. * np.exp((1. / n_var) * np.sum(np.cos(c * x)))
-    out = part1 + part2 + a + np.exp(1)
+
+    return part1 + part2 + a + np.exp(1)
+
+
+def wrapped_ackley(query: Query) -> Result:  # noqa: D103
+
+    y = ackley_fn(
+        np.array(query.config.to_tuple())
+    )
 
     return Result(
         query=query,
         fidelity=None,
-        values={"value": out},
+        values={"value": y},
     )
+
+
+ACKLEY_BENCH = FunctionalBenchmark(
+    name="ackley",
+    config_space=ConfigurationSpace(
+        {
+            f"x{i}": (-32.768, 32.768) for i in range(2)
+        }
+    ),
+    metrics={"y": Measure.metric((0.0, np.inf), minimize=True)},
+    query=wrapped_ackley
+)
