@@ -54,10 +54,7 @@ pip install -e . # -e for editable install
 
 ```python
 from ConfigSpace import ConfigurationSpace
-from hpoglue.config import Config
-from hpoglue.optimizer import Optimizer
-from hpoglue.problem import Problem
-from hpoglue.query import Query
+from hpoglue import Config, Optimizer, Problem, Query
 from pathlib import Path
 
 
@@ -99,10 +96,7 @@ class RandomSearch(Optimizer):
 ```python
 import numpy as np
 from ConfigSpace import ConfigurationSpace
-from hpoglue.benchmark import FunctionalBenchmark
-from hpoglue.measure import Measure
-from hpoglue.result import Result
-from hpoglue.query import Query
+from hpoglue import FunctionalBenchmark, Measure, Result, Query
 
 
 def ackley_fn(x1: float, x2: float) -> float:

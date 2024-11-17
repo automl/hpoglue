@@ -5,13 +5,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 from ConfigSpace import ConfigurationSpace
 
-from hpoglue.benchmark import FunctionalBenchmark
-from hpoglue.measure import Measure
-from hpoglue.result import Result
+from hpoglue import FunctionalBenchmark, Measure, Result
 
 if TYPE_CHECKING:
 
-    from hpoglue.query import Query
+    from hpoglue import Query
 
 
 def branin_fn(x: np.ndarray) -> float:
