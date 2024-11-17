@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from hpoglue._run import _run
+from hpoglue.benchmark import FunctionalBenchmark
 from hpoglue.problem import Problem
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 def run_glue(
     optimizer: Optimizer,
-    benchmark: BenchmarkDescription,
+    benchmark: BenchmarkDescription | FunctionalBenchmark,
     optimizer_hyperparameters: Mapping[str, int | float] = {},
     run_name: str | None = None,
     budget=50,
@@ -34,6 +35,8 @@ def run_glue(
     Returns:
         The result of the _run function as a pandas DataFrame.
     """
+    if isinstance(benchmark, FunctionalBenchmark):
+        benchmark = benchmark.description
     problem = Problem.problem(
         optimizer=optimizer,
         optimizer_hyperparameters=optimizer_hyperparameters,
