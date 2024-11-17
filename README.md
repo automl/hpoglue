@@ -58,26 +58,39 @@ from hpoglue.config import Config
 from hpoglue.optimizer import Optimizer
 from hpoglue.problem import Problem
 from hpoglue.query import Query
+from pathlib import Path
 
 
 class RandomSearch(Optimizer):
     name = "RandomSearch"
     support = Problem.Support()
-    def __init__(self, problem, seed, working_directory, config_space):
-        self.config_space = config_space
+    def __init__(
+        self,
+        problem: Problem,
+        working_directory: str | Path,
+        seed: int | None = None,
+    ):
+        """
+        Args:
+            problem: Source of task information.
+            working_directory: TODO
+            seed: TODO
+        """
+        self.config_space = problem.config_space
         self.config_space.seed(seed)
         self.problem = problem
-        self._counter = 0
+        self._optmizer_unique_id = 0
 
-    def ask(self):
-        self._counter += 1
+    def ask(self) -> Query:
+        self._optmizer_unique_id += 1
         config = Config(
-            config_id=str(self._counter),
-            values=self.config_space.sample_configuration().get_dictionary(),
+            config_id=str(self._optmizer_unique_id),
+            values=dict(self.config_space.sample_configuration()),
         )
         return Query(config=config, fidelity=None)
 
-    def tell(self, result):
+    def tell(self, result: Result) -> None:
+        # Update the optimizer (not needed for RandomSearch)
         return
 ```
 
@@ -85,34 +98,45 @@ class RandomSearch(Optimizer):
 
 ```python
 import numpy as np
-from ConfigSpace import ConfigurationSpace, Float
+from ConfigSpace import ConfigurationSpace
 from hpoglue.benchmark import FunctionalBenchmark
 from hpoglue.measure import Measure
 from hpoglue.result import Result
+from hpoglue.query import Query
 
-def ackley_bench():
-    ackley_space = ConfigurationSpace()
-    for i in range(2):
-        ackley_space.add(Float(name=f"x{i}", bounds=[-32.768, 32.768]))
-    return FunctionalBenchmark(
-        name="ackley",
-        config_space=ackley_space,
-        metrics={"value": Measure.metric((0.0, np.inf), minimize=True)},
-        query=ackley,
-    )
 
-def ackley(query):
-    x = np.array(query.config.to_tuple())
-    n_var=2
+def ackley_fn(x1: float, x2: float) -> float:
+    x = np.array([x1, x2])
+    n_var=len(x)
     a=20
     b=1/5
     c=2 * np.pi
     part1 = -1. * a * np.exp(-1. * b * np.sqrt((1. / n_var) * np.sum(x * x)))
     part2 = -1. * np.exp((1. / n_var) * np.sum(np.cos(c * x)))
     out = part1 + part2 + a + np.exp(1)
-    return Result(
-        query=query,
-        fidelity=None,
-        values={"value": out},
-    )
+    return out
+
+def wrapped_ackley(query: Query) -> Result:
+    y = ackley_fn(x1=query.config.values["x1"], x2=query.config.values["x2"])
+    return Result(query=query, fidelity=None, values={"y": y})
+
+ACKLEY_BENCH = FunctionalBenchmark(
+    name="ackley",
+    config_space=ConfigurationSpace({"x1": (-32.768, 32.768), "x2": (-32.768, 32.768)}),
+    metrics={"y": Measure.metric((0.0, np.inf), minimize=True)},
+    query=wrapped_ackley,
+)
+```
+
+## Run hpoglue on the examples
+
+```python
+from hpoglue.run_glue import run_glue
+df = run_glue(
+    run_name="hpoglue_demo",
+    optimizer = RandomSearch,
+    benchmark = ACKLEY_BENCH,
+    seed = 1,
+    budget = 50
+)
 ```
