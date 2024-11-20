@@ -50,7 +50,7 @@ def wrapped_ackley(query: Query) -> Result:  # noqa: D103
     return Result(
         query=query,
         fidelity=None,
-        values={"value": y},
+        values={"y": y},
     )
 
 

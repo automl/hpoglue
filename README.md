@@ -53,8 +53,7 @@ pip install -e . # -e for editable install
 ## Example Optimizer Definition
 
 ```python
-from ConfigSpace import ConfigurationSpace
-from hpoglue import Config, Optimizer, Problem, Query
+from hpoglue import Config, Optimizer, Problem, Query, Result
 from pathlib import Path
 
 
@@ -70,8 +69,8 @@ class RandomSearch(Optimizer):
         """
         Args:
             problem: Source of task information.
-            working_directory: TODO
-            seed: TODO
+            working_directory: Directory to save the optimizer's state.
+            seed: seed for random number generator.
         """
         self.config_space = problem.config_space
         self.config_space.seed(seed)
