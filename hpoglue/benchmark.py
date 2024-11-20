@@ -66,7 +66,7 @@ class BenchmarkDescription:
     is_tabular: bool = False
     """Whether the benchmark is tabular."""
 
-    env: Env = field(default_factory=Env.empty)
+    env: Env = field(default_factory=Env.empty())
     """The environment needed to run this benchmark."""
 
     mem_req_mb: int = 1024
@@ -415,7 +415,7 @@ class FunctionalBenchmark:
         costs: Mapping[str, Measure] | None = None,
         test_metrics: Mapping[str, Measure] | None = None,
         config_space: ConfigurationSpace | list[Config] | None = None,
-        env: Env = Env.empty,
+        env: Env | None = None,
         mem_req_mb: int = 1024,
     ):
         """Create a functional benchmark.
@@ -443,7 +443,7 @@ class FunctionalBenchmark:
             fidelities=fidelities,
             has_conditionals=False,
             is_tabular=False,
-            env=env,
+            env=env or Env.empty(),
             mem_req_mb=mem_req_mb,
         )
 
