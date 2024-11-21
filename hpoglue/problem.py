@@ -406,6 +406,9 @@ class Problem:
             "budget_type": self.budget.name,
             "budget": self.budget.to_dict(),
             "benchmark": self.benchmark.name,
+            "optimizer": self.optimizer.name,
+            "optimizer_hyperparameters": self.optimizer_hyperparameters,
+            "precision": self.precision,
         }
 
     @classmethod
