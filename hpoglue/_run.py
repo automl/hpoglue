@@ -159,7 +159,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                     query = optimizer.ask()
 
                     #TODO: Temporary fix for problems without fidelities
-                    if problem.fidelity is None:
+                    if problem.fidelities is None:
                         result = benchmark.query(query)
 
                     else:
@@ -171,7 +171,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                         resample_flag = False
                         flag = runhist.add_conf(
                             config=config,
-                            fid_type=problem.fidelity[0]
+                            fid_type=problem.fidelities[0]
                             #TODO: Raise Manyfidelity NotImplementedError
                         )
                         if flag == 1:
@@ -197,7 +197,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                             if continuations:
                                 result.continuations_cost = runhist.get_continuations_cost(
                                     config=config,
-                                    fid_type=problem.fidelity[0]
+                                    fid_type=problem.fidelities[0]
                                 )
 
                     budget_cost = _trial_budget_cost(
@@ -233,7 +233,7 @@ def _trial_budget_cost(
     problem: Problem,
     minimum_normalized_fidelity: float,
 ) -> float:
-    problem_fids = problem.fidelity
+    problem_fids = problem.fidelities
     match value:
         case None:
             assert problem_fids is None

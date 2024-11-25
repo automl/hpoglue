@@ -67,13 +67,13 @@ class RandomSearch(Optimizer):
             case _:
                 raise TypeError("Config space must be a ConfigSpace or a list of Configs")
 
-        match self.problem.fidelity:
+        match self.problem.fidelities:
             case None:
                 fidelity = None
             case (name, fidelity):
                 fidelity = (name, fidelity.max)
             case Mapping():
-                fidelity = {name: fidelity.max for name, fidelity in self.problem.fidelity.items()}
+                fidelity = {name: fidelity.max for name, fidelity in self.problem.fidelities.items()}
             case _:
                 raise ValueError("Fidelity must be a string or a list of strings")
 
