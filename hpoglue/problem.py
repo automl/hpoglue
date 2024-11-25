@@ -3,9 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar
-
-from more_itertools import roundrobin, take
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from hpoglue.budget import CostBudget, TrialBudget
 from hpoglue.config import Config
@@ -14,6 +12,7 @@ from hpoglue.measure import Measure
 from hpoglue.optimizer import Optimizer
 from hpoglue.query import Query
 from hpoglue.result import Result
+from hpoglue.utils import first, first_n, mix_n
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
@@ -24,21 +23,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 OptWithHps: TypeAlias = tuple[type[Optimizer], Mapping[str, Any]]
-
-
-T = TypeVar("T")
-
-
-def first(_d: Mapping[str, T]) -> tuple[str, T]:
-    return next(iter(_d.items()))
-
-
-def first_n(n: int, _d: Mapping[str, T]) -> dict[str, T]:
-    return dict(take(n, _d.items()))
-
-
-def mix_n(n: int, _d1: Mapping[str, T], _d2: Mapping[str, T]) -> dict[str, T]:
-    return dict(take(n, roundrobin(_d1.items(), _d2.items())))
 
 
 @dataclass(kw_only=True, unsafe_hash=True)
@@ -55,14 +39,14 @@ class Problem:
     RangeFidelity: TypeAlias = RangeFidelity
     ListFidelity: TypeAlias = ListFidelity
 
-    objective: tuple[str, Measure] | Mapping[str, Measure] = field(hash=False)
+    objectives: tuple[str, Measure] | Mapping[str, Measure] = field(hash=False)
     """The metrics to optimize for this problem, with a specific order.
 
     If only one metric is specified, this is considered single objective and
     not multiobjective.
     """
 
-    fidelity: tuple[str, Fidelity] | Mapping[str, Fidelity] | None = field(hash=False)
+    fidelities: tuple[str, Fidelity] | Mapping[str, Fidelity] | None = field(hash=False)
     """Fidelities to use from the Benchmark.
 
     When `None`, the problem is considered a black-box problem with no fidelity.
@@ -72,8 +56,8 @@ class Problem:
     When many fidelities are specified, the problem is considered a _many-fidelity_ problem.
     """
 
-    cost: tuple[str, Measure] | Mapping[str, Measure] | None = field(hash=False)
-    """The cost metric to use for this proble.
+    costs: tuple[str, Measure] | Mapping[str, Measure] | None = field(hash=False)
+    """The cost metrics to use for this problem.
 
     When `None`, the problem is considered a black-box problem with no cost.
 
@@ -142,20 +126,20 @@ class Problem:
             )
 
         self.is_multiobjective: bool
-        match self.objective:
+        match self.objectives:
             case tuple():
                 self.is_multiobjective = False
-                # name_parts.append(f"objective={self.objective[0]}")
+                # name_parts.append(f"objectives={self.objectives[0]}")
             case Mapping():
-                if len(self.objective) == 1:
+                if len(self.objectives) == 1:
                     raise ValueError("Single objective should be a tuple, not a mapping")
 
                 self.is_multiobjective = True
-                name_parts.append("objective=" + ",".join(self.objective.keys()))
+                name_parts.append("objectives=" + ",".join(self.objectives.keys()))
             case _:
-                raise TypeError("Objective must be a tuple (name, measure) or a mapping")
+                raise TypeError("Objectives must be a tuple (name, measure) or a mapping")
 
-        match self.fidelity:
+        match self.fidelities:
             case None:
                 self.is_multifidelity = False
                 self.is_manyfidelity = False
@@ -167,29 +151,29 @@ class Problem:
                     self.supports_trajectory = True
                 else:
                     self.supports_trajectory = False
-                # name_parts.append(f"fidelity={_name}")
+                # name_parts.append(f"fidelities={_name}")
             case Mapping():
-                if len(self.fidelity) == 1:
+                if len(self.fidelities) == 1:
                     raise ValueError("Single fidelity should be a tuple, not a mapping")
 
                 self.is_multifidelity = False
                 self.is_manyfidelity = True
                 self.supports_trajectory = False
-                # name_parts.append("fidelity=" + ",".join(self.fidelity.keys()))
+                # name_parts.append("fidelities=" + ",".join(self.fidelities.keys()))
             case _:
                 raise TypeError("Fidelity must be a tuple (name, fidelity) or a mapping")
 
-        match self.cost:
+        match self.costs:
             case None:
                 pass
             case (_name, _measure):
-                # name_parts.append(f"cost={_name}")
+                # name_parts.append(f"costs={_name}")
                 pass
             case Mapping():
-                if len(self.cost) == 1:
+                if len(self.costs) == 1:
                     raise ValueError("Single cost should be a tuple, not a mapping")
 
-                # name_parts.append("cost=" + ",".join(self.cost.keys()))
+                # name_parts.append("costs=" + ",".join(self.costs.keys()))
 
         self.name = ".".join(name_parts)
 
@@ -202,8 +186,8 @@ class Problem:
         optimizer_hyperparameters: Mapping[str, int | float] = {},
         benchmark: BenchmarkDescription,
         budget: BudgetType | int,
-        fidelities: int | None = None,
-        objectives: int = 1,
+        fidelities: int | str | list[str] | None = None,
+        objectives: int | str | list[str] = 1,
         costs: int = 0,
         multi_objective_generation: Literal["mix_metric_cost", "metric_only"] = "mix_metric_cost",
         precision: int | None = None
@@ -217,8 +201,8 @@ class Problem:
             budget: The budget to use for the problems. Budget defaults to a n_trials budget
                 where when multifidelty is enabled, fractional budget can be used and 1 is
                 equivalent a full fidelity trial.
-            fidelities: The number of fidelities for the problem.
-            objectives: The number of objectives for the problem.
+            fidelities: The actual fidelities or number of fidelities for the problem.
+            objectives: The actual objectives or number of objectives for the problem.
             costs: The number of costs for the problem.
             multi_objective_generation: The method to generate multiple objectives.
             precision: The precision to use for the problem.
@@ -257,6 +241,34 @@ class Problem:
                     )
 
                 _fid = first_n(fidelities, benchmark.fidelities)
+            case str():
+                if benchmark.fidelities is None:
+                    raise ValueError(
+                        (
+                            f"Benchmark {benchmark.name} has no fidelities but {fidelities=} "
+                            "was requested"
+                        ),
+                    )
+                if fidelities not in benchmark.fidelities:
+                    raise ValueError(
+                        f"{fidelities=} not found in benchmark {benchmark.name} fidelities",
+                    )
+                _fid = (fidelities, benchmark.fidelities[fidelities])
+            case list():
+                if benchmark.fidelities is None:
+                    raise ValueError(
+                        (
+                            f"Benchmark {benchmark.name} has no fidelities but {fidelities=} "
+                            "was requested"
+                        ),
+                    )
+                if len(fidelities) > len(benchmark.fidelities):
+                    raise ValueError(
+                        f"{fidelities=} is greater than the number of fidelities"
+                        f" in benchmark {benchmark.name} which has "
+                        f"{len(benchmark.fidelities)} fidelities",
+                    )
+                _fid = {name: benchmark.fidelities[name] for name in fidelities}
             case _:
                 raise TypeError(f"{fidelities=} not supported")
 
@@ -272,14 +284,14 @@ class Problem:
                 )
             case 1, _:
                 _obj = first(benchmark.metrics)
-            case _, "metric_only":
+            case int(), "metric_only":
                 if objectives > len(benchmark.metrics):
                     raise ValueError(
                         f"{objectives=} is greater than the number of metrics"
-                        f" in benchmark {benchmark.name} which has {len(benchmark.metrics)} metrics",
+                        f" in benchmark {benchmark.name} which has {len(benchmark.metrics)} metrics"
                     )
                 _obj = first_n(objectives, benchmark.metrics)
-            case _, "mix_metric_cost":
+            case int(), "mix_metric_cost":
                 n_costs = 0 if benchmark.costs is None else len(benchmark.costs)
                 n_available = len(benchmark.metrics) + n_costs
                 if objectives > n_available:
@@ -292,6 +304,37 @@ class Problem:
                     _obj = first_n(objectives, benchmark.metrics)
                 else:
                     _obj = mix_n(objectives, benchmark.metrics, benchmark.costs)
+            case str(), _:
+                if objectives not in benchmark.metrics:
+                    raise ValueError(
+                        f"{objectives=} not found in benchmark {benchmark.name} metrics",
+                    )
+                _obj = (objectives, benchmark.metrics[objectives])
+            case list(), "metric_only":
+                if len(objectives) > len(benchmark.metrics):
+                    raise ValueError(
+                        f"{objectives=} is greater than the number of metrics"
+                        f" in benchmark {benchmark.name} which has {len(benchmark.metrics)} metrics"
+                    )
+                _obj = {name: benchmark.metrics[name] for name in objectives}
+            case list(), "mix_metric_cost":
+                n_costs = 0 if benchmark.costs is None else len(benchmark.costs)
+                n_available = len(benchmark.metrics) + n_costs
+                if len(objectives) > n_available:
+                    raise ValueError(
+                        f"{objectives=} is greater than the number of metrics and costs"
+                        f" in benchmark {benchmark.name} which has {n_available} objectives"
+                        " when combining metrics and costs",
+                    )
+                if benchmark.costs is None:
+                    for obj in objectives:
+                        if obj not in benchmark.metrics:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics",
+                            )
+                    _obj = {name: benchmark.metrics[name] for name in objectives}
+                else:
+                    _obj = mix_n(len(objectives), benchmark.metrics, benchmark.costs)
             case _, _:
                 raise RuntimeError(
                     f"Unexpected case with {objectives=}, {multi_objective_generation=}",
@@ -336,9 +379,9 @@ class Problem:
             optimizer_hyperparameters=optimizer_hyperparameters,
             benchmark=benchmark,
             budget=_budget,
-            fidelity=_fid,
-            objective=_obj,
-            cost=_cost,
+            fidelities=_fid,
+            objectives=_obj,
+            costs=_cost,
             precision=precision
         )
 
@@ -357,51 +400,51 @@ class Problem:
         None | tuple[tuple[str, Fidelity], ...],
         None | tuple[tuple[str, Measure], ...],
     ]:
-        match self.objective:
+        match self.objectives:
             case (name, measure):
                 _obj = ((name, measure),)
             case Mapping():
-                _obj = tuple(self.objective.items())
+                _obj = tuple(self.objectives.items())
 
-        match self.fidelity:
+        match self.fidelities:
             case None:
                 _fid = None
             case (name, fid):
                 _fid = ((name, fid),)
             case Mapping():
-                _fid = tuple(self.fidelity.items())
+                _fid = tuple(self.fidelities.items())
 
-        match self.cost:
+        match self.costs:
             case None:
                 _cost = None
             case (name, measure):
                 _cost = ((name, measure),)
             case Mapping():
-                _cost = tuple(self.cost.items())
+                _cost = tuple(self.costs.items())
 
         return (self.benchmark.name, self.budget, _obj, _fid, _cost)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the problem instance to a dictionary."""
         return {
-            "objective": (
-                list(self.objective.keys())
-                if isinstance(self.objective, Mapping)
-                else self.objective[0]
+            "objectives": (
+                list(self.objectives.keys())
+                if isinstance(self.objectives, Mapping)
+                else self.objectives[0]
             ),
-            "fidelity": (
+            "fidelities": (
                 None
-                if self.fidelity is None
+                if self.fidelities is None
                 else (
-                    list(self.fidelity.keys())
-                    if isinstance(self.fidelity, Mapping)
-                    else self.fidelity[0]
+                    list(self.fidelities.keys())
+                    if isinstance(self.fidelities, Mapping)
+                    else self.fidelities[0]
                 )
             ),
-            "cost": (
+            "costs": (
                 None
-                if self.cost is None
-                else (list(self.cost.keys()) if isinstance(self.cost, Mapping) else self.cost[0])
+                if self.costs is None
+                else (list(self.costs.keys()) if isinstance(self.costs, Mapping) else self.costs[0])
             ),
             "budget_type": self.budget.name,
             "budget": self.budget.to_dict(),
@@ -416,12 +459,14 @@ class Problem:
         cls,
         data: dict[str, Any],
         benchmarks_dict: Mapping[str, BenchmarkDescription],
+        optimizers_dict: Mapping[str, Optimizer],
     ) -> Problem:
         """Create a Problem instance from a dictionary.
 
         Args:
             data: A dictionary containing the problem data.
             benchmarks_dict: A mapping of benchmark names to BenchmarkDescription instances.
+            optimizers_dict: A mapping of optimizer names to Optimizer instances.
 
         Returns:
             A Problem instance created from the dictionary data.
@@ -432,42 +477,50 @@ class Problem:
                 " Please make sure your benchmark is registed in `BENCHMARKS`"
                 " before loading/parsing."
             )
+        
+        if data["optimizer"] not in optimizers_dict:
+            raise ValueError(
+                f"Optimizer {data['optimizer']} not found in optimizers!"
+                " Please make sure your optimizer is registed in `OPTIMIZERS`"
+                " before loading/parsing."
+            )
 
         benchmark = benchmarks_dict[data["benchmark"]]
-        _obj = data["objective"]
+        optimizer = optimizers_dict[data["optimizer"]]
+        _obj = data["objectives"]
         match _obj:
             case str():
-                objective = (_obj, benchmark.metrics[_obj])
+                objectives = (_obj, benchmark.metrics[_obj])
             case list():
-                objective = {name: benchmark.metrics[name] for name in _obj}
+                objectives = {name: benchmark.metrics[name] for name in _obj}
             case _:
-                raise ValueError("Objective must be a string or a list of strings")
+                raise ValueError("Objectives must be a string or a list of strings")
 
-        _fid = data["fidelity"]
+        _fid = data["fidelities"]
         match _fid:
             case None:
-                fidelity = None
+                fidelities = None
             case str():
                 assert benchmark.fidelities is not None
-                fidelity = (_fid, benchmark.fidelities[_fid])
+                fidelities = (_fid, benchmark.fidelities[_fid])
             case list():
                 assert benchmark.fidelities is not None
-                fidelity = {name: benchmark.fidelities[name] for name in _fid}
+                fidelities = {name: benchmark.fidelities[name] for name in _fid}
             case _:
                 raise ValueError("Fidelity must be a string or a list of strings")
 
-        _cost = data["cost"]
+        _cost = data["costs"]
         match _cost:
             case None:
-                cost = None
+                costs = None
             case str():
                 assert benchmark.costs is not None
-                cost = (_cost, benchmark.costs[_cost])
+                costs = (_cost, benchmark.costs[_cost])
             case list():
                 assert benchmark.costs is not None
-                cost = {name: benchmark.costs[name] for name in _cost}
+                costs = {name: benchmark.costs[name] for name in _cost}
             case _:
-                raise ValueError("Cost must be a string or a list of strings")
+                raise ValueError("Costs must be a string or a list of strings")
 
         _budget_type = data["budget_type"]
         match _budget_type:
@@ -479,11 +532,13 @@ class Problem:
                 raise ValueError("Budget type must be 'trial_budget' or 'cost_budget'")
 
         return cls(
-            objective=objective,
-            fidelity=fidelity,
-            cost=cost,
+            objectives=objectives,
+            fidelities=fidelities,
+            costs=costs,
             budget=budget,
             benchmark=benchmark,
+            optimizer=optimizer,
+            optimizer_hyperparameters=data["optimizer_hyperparameters"],
         )
 
     @dataclass(kw_only=True)
@@ -497,7 +552,7 @@ class Problem:
 
         def check_opt_support(self, who: str, *, problem: Problem) -> None:
             """Check if the problem is supported by the support."""
-            match problem.fidelity:
+            match problem.fidelities:
                 case None if None not in self.fidelities:
                     raise ValueError(
                         f"Optimizer {who} does not support having no fidelties for {problem.name}!"
@@ -511,7 +566,7 @@ class Problem:
                         f"Optimizer {who} does not support many-fidelty for {problem.name}!"
                     )
 
-            match problem.objective:
+            match problem.objectives:
                 case tuple() if "single" not in self.objectives:
                     raise ValueError(
                         f"Optimizer {who} does not support single-objective for {problem.name}!"
@@ -521,7 +576,7 @@ class Problem:
                         f"Optimizer {who} does not support multi-objective for {problem.name}!"
                     )
 
-            match problem.cost:
+            match problem.costs:
                 case None if None not in self.cost_awareness:
                     raise ValueError(
                         f"Optimizer {who} does not support having no cost for {problem.name}!"

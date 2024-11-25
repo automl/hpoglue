@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 def run_glue(
     optimizer: Optimizer,
     benchmark: BenchmarkDescription | FunctionalBenchmark,
+    objectives: int | str | list[str] = 1,
+    fidelities: int | str | list[str] | None = None,
     optimizer_hyperparameters: Mapping[str, int | float] = {},
     run_name: str | None = None,
     budget=50,
@@ -41,6 +43,8 @@ def run_glue(
         optimizer=optimizer,
         optimizer_hyperparameters=optimizer_hyperparameters,
         benchmark=benchmark,
+        objectives=objectives,
+        fidelities=fidelities,
         budget=budget,
     )
 
