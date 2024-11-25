@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import TypeAlias, TypeVar
 
 import numpy as np
 import pandas as pd
+from more_itertools import roundrobin, take
 
 logger = logging.getLogger(__name__)
 
@@ -102,4 +104,18 @@ def rescale(
             return scaled.astype(np.float64)
         case _:
             raise ValueError(f"Unsupported type {type(x)}")
+
+
+T = TypeVar("T")
+
+def first(_d: Mapping[str, T]) -> tuple[str, T]:
+    return next(iter(_d.items()))
+
+
+def first_n(n: int, _d: Mapping[str, T]) -> dict[str, T]:
+    return dict(take(n, _d.items()))
+
+
+def mix_n(n: int, _d1: Mapping[str, T], _d2: Mapping[str, T]) -> dict[str, T]:
+    return dict(take(n, roundrobin(_d1.items(), _d2.items())))
 
