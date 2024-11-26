@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from hpoglue.env import Env
 
 if TYPE_CHECKING:
-    from ConfigSpace import ConfigurationSpace
 
-    from hpoglue.config import Config
     from hpoglue.problem import Problem
     from hpoglue.query import Query
     from hpoglue.result import Result
