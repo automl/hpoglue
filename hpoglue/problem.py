@@ -392,6 +392,11 @@ class Problem:
 
 
     def get_objectives(self) -> str | list[str]:
+        """Retrieve the objectives of the problem.
+
+        Returns:
+            objectives of the problem
+        """
         return (
             list(self.objectives.keys())
             if isinstance(self.objectives, Mapping)
@@ -400,6 +405,11 @@ class Problem:
 
 
     def get_fidelities(self) -> str | list[str] | None:
+        """Retrieve the fidelities associated with the object.
+
+        Returns:
+            fidelities of the problem.
+        """
         return (
             None
             if self.fidelities is None
@@ -410,6 +420,11 @@ class Problem:
 
 
     def get_costs(self) -> str | list[str] | None:
+        """Retrieve the costs associated with the object.
+
+        Returns:
+            costs of the problem.
+        """
         return (
             None
             if self.costs is None
@@ -428,6 +443,16 @@ class Problem:
         None | tuple[tuple[str, Fidelity], ...],
         None | tuple[tuple[str, Measure], ...],
     ]:
+        """Groups the objectives, fidelities, and costs for optimizer comparison.
+
+        Returns:
+            tuple: A tuple containing:
+                - The name of the benchmark.
+                - The budget type.
+                - The objectives.
+                - The fidelities.
+                - The costs.
+        """
         match self.objectives:
             case (name, measure):
                 _obj = ((name, measure),)
