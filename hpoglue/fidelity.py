@@ -151,3 +151,64 @@ class RangeFidelity(Generic[T]):
             supports_continuation=supports_continuation,
         )
 
+@dataclass(kw_only=True, frozen=True)
+class ContinuousFidelity(Generic[T]):
+    """A class to represent a continuous fidelity range with a minimum and maximum value.
+
+    Attributes:
+        kind: The type of the fidelity values (int or float).
+
+        min: The minimum value of the fidelity range.
+
+        max: The maximum value of the fidelity range.
+
+        supports_continuation: A boolean flag indicating if continuation is supported.
+    """
+    kind: type[T]
+    min: T
+    max: T
+    supports_continuation: bool
+
+    def __post_init__(self):
+        if self.min >= self.max:
+            raise ValueError(f"min must be less than max, got {self.min} and {self.max}")
+
+    def __iter__(self) -> Iterator[T]:
+        yield self.min
+        yield self.max
+
+    @classmethod
+    def from_tuple(
+        cls,
+        values: tuple[T, T],
+        *,
+        supports_continuation: bool = False,
+    ) -> ContinuousFidelity[T]:
+        """Create a ContinuousFidelity instance from a tuple of values.
+
+        Args:
+            values: A tuple containing two values of type int or float.
+
+            supports_continuation: A flag indicating if continuation is supported.
+                Defaults to False.
+
+        Returns:
+            ContinuousFidelity: An instance of ContinuousFidelity with the specified values.
+
+        Raises:
+            ValueError: If the values are not of type int or float,
+                or if the values are not of the same type.
+        """
+        _type = type(values[0])
+        if _type not in (int, float):
+            raise ValueError(f"all values must be of type int or float, got {_type}")
+
+        if not all(isinstance(v, _type) for v in values):
+            raise ValueError(f"all values must be of type {_type}, got {values}")
+
+        return cls(
+            kind=_type,
+            min=values[0],
+            max=values[1],
+            supports_continuation=supports_continuation,
+        )
