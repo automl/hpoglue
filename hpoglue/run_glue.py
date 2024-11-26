@@ -71,7 +71,7 @@ def run_glue(
         optimizer=problem.optimizer.name,
         optimizer_hps=problem.optimizer_hyperparameters,
         benchmark=problem.benchmark.name,
-        objectives=problem.get_objectives(),
-        fidelities=problem.get_fidelities(),
-        costs=problem.get_costs(),
+        objectives=[problem.get_objectives()]*len(_df),
+        fidelities=[problem.get_fidelities()*len(_df)] if problem.get_fidelities() else None,
+        costs=[problem.get_costs()*len(_df)] if problem.get_costs() else None,
     )
