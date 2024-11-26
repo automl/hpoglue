@@ -77,6 +77,7 @@ class Measure:
         return cls(minimize=minimize, kind=cls.Kind.TEST_METRIC, bounds=bounds)
 
     class Kind(str, Enum):
+        """Enumeration of measure kinds."""
         METRIC = "metric"
         COST = "cost"
         TEST_METRIC = "test_metric"

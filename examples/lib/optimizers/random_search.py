@@ -73,7 +73,9 @@ class RandomSearch(Optimizer):
             case (name, fidelity):
                 fidelity = (name, fidelity.max)
             case Mapping():
-                fidelity = {name: fidelity.max for name, fidelity in self.problem.fidelities.items()}
+                fidelity = {
+                    name: fidelity.max for name, fidelity in self.problem.fidelities.items()
+                }
             case _:
                 raise ValueError("Fidelity must be a string or a list of strings")
 
