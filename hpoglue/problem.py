@@ -391,6 +391,34 @@ class Problem:
         return problem
 
 
+    def get_objectives(self) -> str | list[str]:
+        return (
+            list(self.objectives.keys())
+            if isinstance(self.objectives, Mapping)
+            else self.objectives[0]
+        )
+
+
+    def get_fidelities(self) -> str | list[str] | None:
+        return (
+            None
+            if self.fidelities is None
+            else list(self.fidelities.keys())
+            if isinstance(self.fidelities, Mapping)
+            else self.fidelities[0]
+        )
+
+
+    def get_costs(self) -> str | list[str] | None:
+        return (
+            None
+            if self.costs is None
+            else list(self.costs.keys())
+            if isinstance(self.costs, Mapping)
+            else self.costs[0]
+        )
+
+
     def group_for_optimizer_comparison(
         self,
     ) -> tuple[
@@ -427,25 +455,9 @@ class Problem:
     def to_dict(self) -> dict[str, Any]:
         """Convert the problem instance to a dictionary."""
         return {
-            "objectives": (
-                list(self.objectives.keys())
-                if isinstance(self.objectives, Mapping)
-                else self.objectives[0]
-            ),
-            "fidelities": (
-                None
-                if self.fidelities is None
-                else (
-                    list(self.fidelities.keys())
-                    if isinstance(self.fidelities, Mapping)
-                    else self.fidelities[0]
-                )
-            ),
-            "costs": (
-                None
-                if self.costs is None
-                else (list(self.costs.keys()) if isinstance(self.costs, Mapping) else self.costs[0])
-            ),
+            "objectives": self.get_objectives(),
+            "fidelities": self.get_fidelities(),
+            "costs": self.get_costs(),
             "budget_type": self.budget.name,
             "budget": self.budget.to_dict(),
             "benchmark": self.benchmark.name,
@@ -477,7 +489,7 @@ class Problem:
                 " Please make sure your benchmark is registed in `BENCHMARKS`"
                 " before loading/parsing."
             )
-        
+
         if data["optimizer"] not in optimizers_dict:
             raise ValueError(
                 f"Optimizer {data['optimizer']} not found in optimizers!"
