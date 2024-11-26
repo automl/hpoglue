@@ -24,15 +24,27 @@ def run_glue(
     budget=50,
     seed=0,
 ) -> pd.DataFrame:
-    """Run the glue function with the given optimizer, benchmark, and hyperparameters.
+    """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
 
-    Args:
-        optimizer (Optimizer): The optimizer to use.
-        benchmark (BenchmarkDescription): The benchmark description.
-        optimizer_hyperparameters (Mapping[str, int | float]): Hyperparameters for the optimizer.
-        run_name (str | None, optional): The name of the run. Defaults to None.
-        budget (int, optional): The budget for the run. Defaults to 50.
-        seed (int, optional): The seed for random number generation. Defaults to 0.
+        optimizer: The optimizer instance to be used.
+
+        benchmark: The benchmark to be evaluated.
+
+        objectives: The objectives for the benchmark.
+            Defaults to 1, the first objective in the benchmark.
+
+        fidelities: The fidelities for the benchmark.
+            Defaults to None.
+
+        optimizer_hyperparameters: Hyperparameters for the optimizer.
+            Defaults to an empty dictionary.
+
+        run_name: An optional name for the run. Defaults to None.
+
+        budget: The budget allocated for the run. Defaults to 50.
+
+        seed: The seed for random number generation to ensure reproducibility.
+            Defaults to 0.
 
     Returns:
         The result of the _run function as a pandas DataFrame.
@@ -53,11 +65,13 @@ def run_glue(
         problem=problem,
         seed=seed,
     )
-
     _df = pd.DataFrame([res._to_dict() for res in history])
     return _df.assign(
         seed=seed,
         optimizer=problem.optimizer.name,
         optimizer_hps=problem.optimizer_hyperparameters,
-        benchmark=problem.benchmark.name
+        benchmark=problem.benchmark.name,
+        objectives=problem.get_objectives(),
+        fidelities=problem.get_fidelities(),
+        costs=problem.get_costs(),
     )
