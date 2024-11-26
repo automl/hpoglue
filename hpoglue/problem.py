@@ -587,6 +587,44 @@ class Problem:
         cost_awareness: tuple[Literal[None, "single", "many"], ...] = field(default=(None,))
         tabular: bool = False
 
+        def __post_init__(self) -> None:
+            match self.objectives:
+                case tuple():
+                    pass
+                case str():
+                    self.objectives = (self.objectives,)
+                case None:
+                    self.objectives = (None,)
+                case _:
+                    raise ValueError(
+                        "Invalid type for optimizer support objectives: "
+                        f"{type(self.objectives)}, expected tuple!"
+                    )
+            match self.fidelities:
+                case tuple():
+                    pass
+                case str():
+                    self.fidelities = (self.fidelities,)
+                case None:
+                    self.fidelities = (None,)
+                case _:
+                    raise ValueError(
+                        "Invalid type for optimizer support fidelities: "
+                        f"{type(self.fidelities)}, expected tuple!"
+                    )
+            match self.cost_awareness:
+                case tuple():
+                    pass
+                case str():
+                    self.cost_awareness = (self.cost_awareness,)
+                case None:
+                    self.cost_awareness = (None,)
+                case _:
+                    raise ValueError(
+                        "Invalid type for optimizer support cost_awareness: "
+                        f"{type(self.cost_awareness)}, expected tuple!"
+                    )
+
         def check_opt_support(self, who: str, *, problem: Problem) -> None:
             """Check if the problem is supported by the support."""
             match problem.fidelities:
