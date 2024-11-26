@@ -47,7 +47,6 @@ class Optimizer(ABC):
         *,
         problem: Problem,
         seed: int,
-        config_space: list[Config] | ConfigurationSpace,
         working_directory: Path,
         **optimizer_kwargs: Any,
     ) -> None:
@@ -56,7 +55,6 @@ class Optimizer(ABC):
         Args:
             problem: The problem to optimize over
             seed: The random seed for the optimizer
-            config_space: The configuration space to optimize over
             working_directory: The directory to save the optimizer's state
             optimizer_kwargs: Any additional hyperparameters for the optimizer
         """
