@@ -109,13 +109,46 @@ def rescale(
 T = TypeVar("T")
 
 def first(_d: Mapping[str, T]) -> tuple[str, T]:
+    """Return the first key-value pair from a dictionary.
+        Used for retrieving the first objectives/fidelities/costs of a benchmark.
+
+    Args:
+        _d: The dictionary from which to retrieve the first item.
+
+    Returns:
+        A tuple containing the first key and its corresponding value from the dictionary.
+
+    Raises:
+        StopIteration: If the dictionary is empty.
+    """
     return next(iter(_d.items()))
 
 
 def first_n(n: int, _d: Mapping[str, T]) -> dict[str, T]:
+    """Return the first `n` items from the given dictionary.
+        Used for retrieving the first `n` objectives/fidelities/costs of a benchmark.
+
+    Args:
+        n (int): The number of items to return.
+        _d (Mapping[str, T]): The dictionary from which to take the items.
+
+    Returns:
+        dict[str, T]: A dictionary containing the first `n` items from `_d`.
+    """
     return dict(take(n, _d.items()))
 
 
 def mix_n(n: int, _d1: Mapping[str, T], _d2: Mapping[str, T]) -> dict[str, T]:
+    """Mixes items from two dictionaries in a round-robin fashion up to a specified number of items.
+        Used for mixing objectives/costs of benchmark in case of multi-objective optimization.
+
+    Args:
+        n (int): The number of items to take from the combined dictionaries.
+        _d1 (Mapping[str, T]): The first dictionary to mix.
+        _d2 (Mapping[str, T]): The second dictionary to mix.
+
+    Returns:
+        dict[str, T]: A dictionary containing up to `n` items from the combined dictionaries.
+    """
     return dict(take(n, roundrobin(_d1.items(), _d2.items())))
 
