@@ -23,6 +23,7 @@ def run_glue(
     run_name: str | None = None,
     budget=50,
     seed=0,
+    continuations: bool = False,
 ) -> pd.DataFrame:
     """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
 
@@ -46,6 +47,9 @@ def run_glue(
         seed: The seed for random number generation to ensure reproducibility.
             Defaults to 0.
 
+        continuations: Whether to use continuations for the run. 
+            Defaults to False.
+
     Returns:
         The result of the _run function as a pandas DataFrame.
     """
@@ -64,6 +68,7 @@ def run_glue(
         run_name=run_name,
         problem=problem,
         seed=seed,
+        continuations=continuations,
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
     return _df.assign(
