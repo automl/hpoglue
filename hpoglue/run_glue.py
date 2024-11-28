@@ -23,6 +23,7 @@ def run_glue(
     run_name: str | None = None,
     budget=50,
     seed=0,
+    *,
     continuations: bool = False,
 ) -> pd.DataFrame:
     """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
