@@ -98,13 +98,19 @@ class Problem:
 
     name: str = field(init=False)
     """The name of the problem.
-
-    This is used to identify the problem.
+        This is used to identify the problem.
     """
 
     precision: int = field(default=12) #TODO: Set default
+    """The precision to use for the problem."""
 
     mem_req_mb: int = field(init=False)
+    """The memory requirement in MB for the problem.
+        It is the sum of the optimizer and benchmark memory requirements.
+    """
+
+    continuations: bool = field(default=True)
+    """Whether the problem supports continuations."""
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         self.config_space = self.benchmark.config_space
@@ -190,22 +196,33 @@ class Problem:
         objectives: int | str | list[str] = 1,
         costs: int = 0,
         multi_objective_generation: Literal["mix_metric_cost", "metric_only"] = "mix_metric_cost",
-        precision: int | None = None
+        precision: int | None = None,
+        continuations: bool = True,
     ) -> Problem:
         """Generate a problem for this optimizer and benchmark.
 
         Args:
             optimizer: The optimizer to use for the problem.
+
             optimizer_hyperparameters: The hyperparameters to use for the optimizer.
+
             benchmark: The benchmark to use for the problem.
+
             budget: The budget to use for the problems. Budget defaults to a n_trials budget
                 where when multifidelty is enabled, fractional budget can be used and 1 is
                 equivalent a full fidelity trial.
+
             fidelities: The actual fidelities or number of fidelities for the problem.
+
             objectives: The actual objectives or number of objectives for the problem.
+
             costs: The number of costs for the problem.
+
             multi_objective_generation: The method to generate multiple objectives.
+
             precision: The precision to use for the problem.
+
+            continuations: Whether to use continuations for the problem.
         """
         _fid: tuple[str, Fidelity] | Mapping[str, Fidelity] | None
         match fidelities:
@@ -374,6 +391,9 @@ class Problem:
             case _:
                 raise TypeError(f"Unexpected type for `{budget=}`: {type(budget)}")
 
+        if "single" not in optimizer.support.fidelities:
+            continuations = False
+
         problem = Problem(
             optimizer=optimizer,
             optimizer_hyperparameters=optimizer_hyperparameters,
@@ -382,7 +402,8 @@ class Problem:
             fidelities=_fid,
             objectives=_obj,
             costs=_cost,
-            precision=precision
+            precision=precision,
+            continuations=continuations,
         )
 
         support: Problem.Support = optimizer.support
@@ -488,7 +509,7 @@ class Problem:
             "benchmark": self.benchmark.name,
             "optimizer": self.optimizer.name,
             "optimizer_hyperparameters": self.optimizer_hyperparameters,
-            "precision": self.precision,
+            "continuations": self.continuations,
         }
 
     @classmethod
@@ -576,6 +597,7 @@ class Problem:
             benchmark=benchmark,
             optimizer=optimizer,
             optimizer_hyperparameters=data["optimizer_hyperparameters"],
+            continuations=data["continuations"],
         )
 
     @dataclass(kw_only=True)

@@ -91,7 +91,6 @@ def _run(
     run_name: str | None = None,
     on_error: Literal["raise", "continue"] = "raise",
     progress_bar: bool = False,
-    continuations: bool = False
 ) -> list[Result]:
     run_name = run_name if run_name is not None else problem.name
     benchmark = problem.benchmark.load(problem.benchmark)
@@ -116,7 +115,6 @@ def _run(
                 on_error=on_error,
                 minimum_normalized_fidelity=minimum_normalized_fidelity,
                 progress_bar=progress_bar,
-                continuations=continuations,
             )
         case CostBudget():
             raise NotImplementedError("CostBudget not yet implemented")
@@ -137,7 +135,6 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
     on_error: Literal["raise", "continue"],
     minimum_normalized_fidelity: float,
     progress_bar: bool,
-    continuations: bool = False,
 ) -> list[Result]:
     used_budget: float = 0.0
 
@@ -194,7 +191,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                                     result.query = query
                         else:
                             result = benchmark.query(query)
-                            if continuations:
+                            if problem.continuations:
                                 result.continuations_cost = runhist.get_continuations_cost(
                                     config=config,
                                     fid_type=problem.fidelities[0]
