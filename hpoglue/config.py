@@ -6,6 +6,8 @@ from typing import Any
 import numpy as np
 
 PRECISION = 12
+"""The default precision to use for floats in configurations."""
+
 
 @dataclass
 class Config:
@@ -24,32 +26,29 @@ class Config:
         """Convert the configuration values to a tuple with specified precision.
 
         Args:
-            precision (int | None): The precision to round the float values to.
-                                    If None, the default precision is used.
+            precision: The precision to round the float values to.
+                If `None`, the default
+                [`PRECISION`][hpoglue.config.PRECISION] is used.
 
         Returns:
-            tuple: A tuple of the configuration values with the specified precision.
+            A tuple of the configuration values with the specified precision.
         """
         if precision is None:
             precision = PRECISION
-        return tuple(
-            self.set_precision(
-                self.values,
-                precision
-            ).values()
-        )
 
-    def set_precision(self, values: dict, precision: int) -> None:
+        assert self.values is not None
+        return tuple(self.set_precision(self.values, precision).values())
+
+    @staticmethod
+    def set_precision(values: dict, precision: int) -> dict[str, Any]:
         """Set the precision of float values in the configuration for continuations.
 
         Args:
-            values (dict): The dictionary of configuration values.
-            precision (int): The precision to round the float values to.
+            values: The dictionary of configuration values.
+            precision: The precision to round the float values to.
 
         Returns:
-            dict: The dictionary with float values rounded to the specified precision.
+            The dictionary with float values rounded to the specified precision.
         """
-        for key, value in values.items():
-            if isinstance(value, float):
-                values[key] = np.round(value, precision)
-        return values
+        # NOTE: Make sure not to edit the dictionary in place as we return a value.
+        return {k: np.round(v, precision) if isinstance(v, float) else v for k, v in values.items()}
