@@ -108,11 +108,9 @@ def run_glue(
         case _:
             raise ValueError(f"Unsupported objectives type: {type(objs)}")
 
-    opt_name = problem.optimizer.name if isinstance(problem.optimizer, type) else problem.optimizer
-
     return _df.assign(
         seed=seed,
-        optimizer=opt_name,
+        optimizer=problem.optimizer.name,
         optimizer_hps=problem.optimizer_hyperparameters,
         benchmark=problem.benchmark.name,
         objectives=_objectives,

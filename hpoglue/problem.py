@@ -69,7 +69,7 @@ class Problem:
     budget: BudgetType
     """The type of budget to use for the optimizer."""
 
-    optimizer: type[Optimizer] | OptWithHps
+    optimizer: type[Optimizer]
     """The optimizer to use for this problem"""
 
     optimizer_hyperparameters: Mapping[str, int | float] = field(default_factory=dict)
@@ -113,16 +113,15 @@ class Problem:
     """Whether the problem supports continuations."""
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
-        _opt = self.optimizer[0] if isinstance(self.optimizer, tuple) else self.optimizer
         self.config_space = self.benchmark.config_space
-        self.mem_req_mb = _opt.mem_req_mb + self.benchmark.mem_req_mb
+        self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
         self.is_tabular = self.benchmark.is_tabular
         self.is_manyfidelity: bool
         self.is_multifidelity: bool
         self.supports_trajectory: bool
 
         name_parts: list[str] = [
-            f"optimizer={_opt.name}",
+            f"optimizer={self.optimizer.name}",
             f"benchmark={self.benchmark.name}",
             self.budget.path_str,
         ]
@@ -182,7 +181,7 @@ class Problem:
     def problem(  # noqa: C901, PLR0912, PLR0915
         cls,
         *,
-        optimizer: type[Optimizer] | OptWithHps,
+        optimizer: type[Optimizer],
         optimizer_hyperparameters: Mapping[str, int | float] = {},
         benchmark: BenchmarkDescription,
         budget: BudgetType | int | float,
@@ -494,7 +493,6 @@ class Problem:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the problem instance to a dictionary."""
-        _opt = self.optimizer[0] if isinstance(self.optimizer, tuple) else self.optimizer
         return {
             "objectives": self.get_objectives(),
             "fidelities": self.get_fidelities(),
@@ -502,7 +500,7 @@ class Problem:
             "budget_type": self.budget.name,
             "budget": self.budget.to_dict(),
             "benchmark": self.benchmark.name,
-            "optimizer": _opt.name,
+            "optimizer": self.optimizer.name,
             "optimizer_hyperparameters": self.optimizer_hyperparameters,
             "continuations": self.continuations,
         }

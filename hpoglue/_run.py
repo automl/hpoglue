@@ -3,13 +3,13 @@ from __future__ import annotations
 import logging
 import warnings
 from collections.abc import Mapping
-import numpy as np
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
 from tqdm import TqdmWarning, tqdm
 
 from hpoglue.budget import CostBudget, TrialBudget
