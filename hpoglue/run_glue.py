@@ -73,12 +73,16 @@ def run_glue(
         seed=seed,
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
+    fidelities = problem.get_fidelities()
+    costs = problem.get_costs()
+    opt_name = problem.optimizer.name if isinstance(problem.optimizer, type) else problem.optimizer
+
     return _df.assign(
         seed=seed,
-        optimizer=problem.optimizer.name,
+        optimizer=opt_name,
         optimizer_hps=problem.optimizer_hyperparameters,
         benchmark=problem.benchmark.name,
         objectives=[problem.get_objectives()] * len(_df),
-        fidelities=[problem.get_fidelities() * len(_df)] if problem.get_fidelities() else None,
-        costs=[problem.get_costs() * len(_df)] if problem.get_costs() else None,
+        fidelities=[fidelities * len(_df)] if fidelities else None,
+        costs=[costs * len(_df)] if costs else None,
     )
