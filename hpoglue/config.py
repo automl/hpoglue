@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Mapping
 
 from dataclasses import dataclass
 from typing import Any
@@ -10,7 +11,7 @@ PRECISION = 12
 
 
 @dataclass
-class Config:
+class Config(Mapping[str, Any]):
     """A configuration to evaluate."""
 
     config_id: str
@@ -52,3 +53,15 @@ class Config:
         """
         # NOTE: Make sure not to edit the dictionary in place as we return a value.
         return {k: np.round(v, precision) if isinstance(v, float) else v for k, v in values.items()}
+
+    def __getitem__(self, key: str) -> Any:
+        assert self.values is not None
+        return self.values[key]
+
+    def __iter__(self):
+        assert self.values is not None
+        return iter(self.values)
+
+    def __len__(self) -> int:
+        assert self.values is not None
+        return len(self.values)
