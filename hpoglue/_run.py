@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import warnings
 from collections.abc import Mapping
+import numpy as np
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from functools import partial
@@ -42,26 +43,21 @@ class Conf:
     t: tuple
     fid: int | float
 
+
 @dataclass
 class Runtime_hist:
     configs: dict[tuple, dict[str, list[int | float]]] = field(default_factory=dict)
 
-    def add_conf(
-        self,
-        config: Conf,
-        fid_type: str
-    ) -> int:
+    def add_conf(self, config: Conf, fid_type: str) -> int:
         flag = 0
         if config.t not in self.configs:
-            self.configs[config.t] = {
-                fid_type: [config.fid]
-            }
+            self.configs[config.t] = {fid_type: [config.fid]}
         elif fid_type not in self.configs[config.t]:
             self.configs[config.t][fid_type] = [config.fid]
         elif config.fid in self.configs[config.t][fid_type]:
             warnings.warn(
                 f"Fidelity {config.fid} sampled twice by Optimizer for config {config.t}!",
-                stacklevel=2
+                stacklevel=2,
             )
             flag = 1
         elif config.fid < self.configs[config.t][fid_type][-1]:
@@ -70,11 +66,7 @@ class Runtime_hist:
             self.configs[config.t][fid_type].append(config.fid)
         return flag
 
-    def get_continuations_cost(
-            self,
-            config: Conf,
-            fid_type: str
-    ) -> float:
+    def get_continuations_cost(self, config: Conf, fid_type: str) -> float:
         fid_list = self.configs[config.t][fid_type]
         if len(fid_list) == 1:
             return fid_list[0]
@@ -155,34 +147,30 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                 try:
                     query = optimizer.ask()
 
-                    #TODO: Temporary fix for problems without fidelities
+                    # TODO: Temporary fix for problems without fidelities
                     if problem.fidelities is None:
                         result = benchmark.query(query)
 
                     else:
-                        config = Conf(
-                            query.config.to_tuple(problem.precision),
-                            query.fidelity[1]
-                        )
+                        config = Conf(query.config.to_tuple(problem.precision), query.fidelity[1])
 
                         resample_flag = False
                         flag = runhist.add_conf(
                             config=config,
-                            fid_type=problem.fidelities[0]
-                            #TODO: Raise Manyfidelity NotImplementedError
+                            fid_type=problem.fidelities[0],
+                            # TODO: Raise Manyfidelity NotImplementedError
                         )
                         if flag == 1:
                             resample_flag = True
 
                         if resample_flag:
-                        # NOTE: Not a cheap operation since we don't store the costs
-                        # in the continuations dict
+                            # NOTE: Not a cheap operation since we don't store the costs
+                            # in the continuations dict
                             for res in history:
                                 if (
-                                    Conf(
-                                        res.config.to_tuple(problem.precision),
-                                        res.fidelity[1]) == config
-                                    ):
+                                    Conf(res.config.to_tuple(problem.precision), res.fidelity[1])
+                                    == config
+                                ):
                                     result = res
                                     if query.config_id == result.query.config_id:
                                         raise ValueError(
@@ -193,8 +181,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                             result = benchmark.query(query)
                             if problem.continuations:
                                 result.continuations_cost = runhist.get_continuations_cost(
-                                    config=config,
-                                    fid_type=problem.fidelities[0]
+                                    config=config, fid_type=problem.fidelities[0]
                                 )
 
                     budget_cost = _trial_budget_cost(
@@ -237,7 +224,7 @@ def _trial_budget_cost(
             return 1
 
         case (name, v):
-            assert isinstance(v, int | float)
+            assert isinstance(v, int | float | np.integer | np.floating)
             assert isinstance(problem_fids, tuple)
             assert problem_fids[0] == name
             normed_value = rescale(
@@ -253,7 +240,7 @@ def _trial_budget_cost(
             assert len(value) == len(problem_fids)
             normed_fidelities: list[float] = []
             for k, v in value.items():
-                assert isinstance(v, int | float)
+                assert isinstance(v, int | float | np.integer | np.floating)
                 assert isinstance(problem_fids[k], Fidelity)
                 normed_fid = rescale(
                     v,

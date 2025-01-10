@@ -76,7 +76,38 @@ def run_glue(
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
     fidelities = problem.get_fidelities()
+    match fidelities:
+        case None:
+            _fidelities = None
+        case str():
+            _fidelities = [fidelities] * len(_df)
+        case list():
+            _fidelities = fidelities * len(_df)
+        case _:
+            raise ValueError(f"Unsupported fidelities type: {type(fidelities)}")
+
     costs = problem.get_costs()
+    match costs:
+        case None:
+            _costs = None
+        case str():
+            _costs = [costs] * len(_df)
+        case list():
+            _costs = costs * len(_df)
+        case _:
+            raise ValueError(f"Unsupported costs type: {type(costs)}")
+
+    objs = problem.get_objectives()
+    match objs:
+        case None:
+            _objectives = None
+        case str():
+            _objectives = [objs] * len(_df)
+        case list():
+            _objectives = objs * len(_df)
+        case _:
+            raise ValueError(f"Unsupported objectives type: {type(objs)}")
+
     opt_name = problem.optimizer.name if isinstance(problem.optimizer, type) else problem.optimizer
 
     return _df.assign(
@@ -84,7 +115,7 @@ def run_glue(
         optimizer=opt_name,
         optimizer_hps=problem.optimizer_hyperparameters,
         benchmark=problem.benchmark.name,
-        objectives=[problem.get_objectives()] * len(_df),
-        fidelities=[fidelities * len(_df)] if fidelities else None,
-        costs=[costs * len(_df)] if costs else None,
+        objectives=_objectives,
+        fidelities=fidelities,
+        costs=costs,
     )
