@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def run_glue(
-    optimizer: Optimizer,
+    optimizer: type[Optimizer],
     benchmark: BenchmarkDescription | FunctionalBenchmark,
     objectives: int | str | list[str] = 1,
     fidelities: int | str | list[str] | None = None,
@@ -56,6 +56,7 @@ def run_glue(
     """
     if isinstance(benchmark, FunctionalBenchmark):
         benchmark = benchmark.description
+
     problem = Problem.problem(
         optimizer=optimizer,
         optimizer_hyperparameters=optimizer_hyperparameters,
@@ -77,7 +78,7 @@ def run_glue(
         optimizer=problem.optimizer.name,
         optimizer_hps=problem.optimizer_hyperparameters,
         benchmark=problem.benchmark.name,
-        objectives=[problem.get_objectives()]*len(_df),
-        fidelities=[problem.get_fidelities()*len(_df)] if problem.get_fidelities() else None,
-        costs=[problem.get_costs()*len(_df)] if problem.get_costs() else None,
+        objectives=[problem.get_objectives()] * len(_df),
+        fidelities=[problem.get_fidelities() * len(_df)] if problem.get_fidelities() else None,
+        costs=[problem.get_costs() * len(_df)] if problem.get_costs() else None,
     )
