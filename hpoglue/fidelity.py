@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence, Sized
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar, runtime_checkable
 from typing_extensions import Self
+import numpy as np
+
 
 T = TypeVar("T", bound=int | float)
 
@@ -62,7 +64,7 @@ class Fidelity(Protocol[T]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class ListFidelity(Fidelity, Generic[T]):
+class ListFidelity(Fidelity, Sized, Generic[T]):
     """A class to represent a List Fidelity type, which includes a sorted list of values of a
     specific type, along with additional metadata such as the minimum and maximum values,
     and whether the list supports continuation.
@@ -84,6 +86,9 @@ class ListFidelity(Fidelity, Generic[T]):
     min: T
     max: T
     supports_continuation: bool
+
+    def __len__(self) -> int:
+        return len(self.values)
 
     @classmethod
     def from_seq(
@@ -117,7 +122,7 @@ class ListFidelity(Fidelity, Generic[T]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class RangeFidelity(Fidelity, Generic[T]):
+class RangeFidelity(Fidelity, Sized, Generic[T]):
     """A class to represent a Range Fidelity type that iterates over a range of values with a
         specified step size.
 
@@ -143,12 +148,30 @@ class RangeFidelity(Fidelity, Generic[T]):
         if self.min >= self.max:
             raise ValueError(f"min must be less than max, got {self.min} and {self.max}")
 
+        if self.stepsize <= 0:
+            raise ValueError(f"stepsize must be greater than 0, got {self.stepsize}")
+
+        # Ensure bounds quantize correctly into `n_values` stepsize chunks
+        n_values = int((self.max - self.min) / self.stepsize) + 1
+        if not np.isclose(self.min + (n_values * self.stepsize), self.max):
+            raise ValueError(
+                f"stepsize {self.stepsize} does not divide range [{self.min}, {self.max}]"
+            )
+
     def __iter__(self) -> Iterator[T]:
         current = self.min
         yield self.min
         while current < self.max:
             current += self.stepsize
             yield max(current, self.max)  # type: ignore
+
+    @property
+    def n_values(self) -> int:
+        """The number of values in the range."""
+        return int((self.max - self.min) / self.stepsize) + 1
+
+    def __len__(self) -> int:
+        return self.n_values
 
     @classmethod
     def from_tuple(
