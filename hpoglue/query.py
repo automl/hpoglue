@@ -17,7 +17,7 @@ class Query:
     config: Config
     """ The config to evaluate """
 
-    fidelity: tuple[str, int | float] | Mapping[str, int | float] | None
+    fidelity: tuple[str, int | float] | Mapping[str, int | float] | None = None
     """What fidelity to evaluate at."""
 
     optimizer_info: Any | None = None
