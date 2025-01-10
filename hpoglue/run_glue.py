@@ -19,7 +19,7 @@ def run_glue(
     benchmark: BenchmarkDescription | FunctionalBenchmark,
     objectives: int | str | list[str] = 1,
     fidelities: int | str | list[str] | None = None,
-    optimizer_hyperparameters: Mapping[str, int | float] = {},
+    optimizer_hyperparameters: Mapping[str, int | float] | None = None,
     run_name: str | None = None,
     budget: int | float = 50,
     seed: int = 0,
@@ -56,6 +56,8 @@ def run_glue(
     """
     if isinstance(benchmark, FunctionalBenchmark):
         benchmark = benchmark.description
+
+    optimizer_hyperparameters = optimizer_hyperparameters or {}
 
     problem = Problem.problem(
         optimizer=optimizer,
