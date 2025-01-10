@@ -45,7 +45,7 @@ class Conf:
 
 
 @dataclass
-class Runtime_hist:
+class RuntimeHist:
     configs: dict[tuple, dict[str, list[int | float]]] = field(default_factory=dict)
 
     def add_conf(self, config: Conf, fid_name: str) -> bool:
@@ -147,7 +147,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
     # NOTE(eddiebergman): Ignore the tqdm warning about the progress bar going past max
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=TqdmWarning)
-        runhist = Runtime_hist()
+        runhist = RuntimeHist()
 
         with ctx() as pbar:
             while used_budget < budget_total:
