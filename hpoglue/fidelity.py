@@ -153,7 +153,7 @@ class RangeFidelity(Fidelity, Sized, Generic[T]):
 
         # Ensure bounds quantize correctly into `n_values` stepsize chunks
         n_values = int((self.max - self.min) / self.stepsize) + 1
-        if not np.isclose(self.min + (n_values * self.stepsize), self.max):
+        if not np.isclose(self.min + (n_values * self.stepsize) - 1, self.max):
             raise ValueError(
                 f"stepsize {self.stepsize} does not divide range [{self.min}, {self.max}]"
             )
