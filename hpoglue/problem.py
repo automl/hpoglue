@@ -113,15 +113,16 @@ class Problem:
     """Whether the problem supports continuations."""
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
+        _opt = self.optimizer[0] if isinstance(self.optimizer, tuple) else self.optimizer
         self.config_space = self.benchmark.config_space
-        self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
+        self.mem_req_mb = _opt.mem_req_mb + self.benchmark.mem_req_mb
         self.is_tabular = self.benchmark.is_tabular
         self.is_manyfidelity: bool
         self.is_multifidelity: bool
         self.supports_trajectory: bool
 
         name_parts: list[str] = [
-            f"optimizer={self.optimizer.name}",
+            f"optimizer={_opt.name}",
             f"benchmark={self.benchmark.name}",
             self.budget.path_str,
         ]
@@ -135,7 +136,6 @@ class Problem:
         match self.objectives:
             case tuple():
                 self.is_multiobjective = False
-                # name_parts.append(f"objectives={self.objectives[0]}")
             case Mapping():
                 if len(self.objectives) == 1:
                     raise ValueError("Single objective should be a tuple, not a mapping")
@@ -157,7 +157,6 @@ class Problem:
                     self.supports_trajectory = True
                 else:
                     self.supports_trajectory = False
-                # name_parts.append(f"fidelities={_name}")
             case Mapping():
                 if len(self.fidelities) == 1:
                     raise ValueError("Single fidelity should be a tuple, not a mapping")
@@ -165,7 +164,6 @@ class Problem:
                 self.is_multifidelity = False
                 self.is_manyfidelity = True
                 self.supports_trajectory = False
-                # name_parts.append("fidelities=" + ",".join(self.fidelities.keys()))
             case _:
                 raise TypeError("Fidelity must be a tuple (name, fidelity) or a mapping")
 
@@ -173,13 +171,10 @@ class Problem:
             case None:
                 pass
             case (_name, _measure):
-                # name_parts.append(f"costs={_name}")
                 pass
             case Mapping():
                 if len(self.costs) == 1:
                     raise ValueError("Single cost should be a tuple, not a mapping")
-
-                # name_parts.append("costs=" + ",".join(self.costs.keys()))
 
         self.name = ".".join(name_parts)
 
@@ -499,6 +494,7 @@ class Problem:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the problem instance to a dictionary."""
+        _opt = self.optimizer[0] if isinstance(self.optimizer, tuple) else self.optimizer
         return {
             "objectives": self.get_objectives(),
             "fidelities": self.get_fidelities(),
@@ -506,7 +502,7 @@ class Problem:
             "budget_type": self.budget.name,
             "budget": self.budget.to_dict(),
             "benchmark": self.benchmark.name,
-            "optimizer": self.optimizer.name,
+            "optimizer": _opt.name,
             "optimizer_hyperparameters": self.optimizer_hyperparameters,
             "continuations": self.continuations,
         }
@@ -594,7 +590,7 @@ class Problem:
             costs=costs,
             budget=budget,
             benchmark=benchmark,
-            optimizer=optimizer,
+            optimizer=optimizer.__class__,
             optimizer_hyperparameters=data["optimizer_hyperparameters"],
             continuations=data["continuations"],
         )
@@ -614,8 +610,6 @@ class Problem:
                     pass
                 case str():
                     self.objectives = (self.objectives,)
-                case None:
-                    self.objectives = (None,)
                 case _:
                     raise ValueError(
                         "Invalid type for optimizer support objectives: "
