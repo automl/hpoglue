@@ -21,8 +21,8 @@ def run_glue(
     fidelities: int | str | list[str] | None = None,
     optimizer_hyperparameters: Mapping[str, int | float] = {},
     run_name: str | None = None,
-    budget=50,
-    seed=0,
+    budget: int | float = 50,
+    seed: int = 0,
     *,
     continuations: bool = True,
 ) -> pd.DataFrame:
