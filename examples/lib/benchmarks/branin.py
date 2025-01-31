@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from ConfigSpace import ConfigurationSpace
 
-from hpoglue import FunctionalBenchmark, Measure, Result
+from hpoglue import Config, FunctionalBenchmark, Measure, Result
 
 if TYPE_CHECKING:
 
@@ -66,5 +66,28 @@ BRANIN_BENCH = FunctionalBenchmark(
     metrics={
             "value": Measure.metric((0.397887, np.inf), minimize=True),
         },
-    query=wrapped_branin
+    query=wrapped_branin,
+    predefined_points={
+        "min": (
+            Config(
+                config_id="min",
+                description="This point yields a global optimum of y:0.39787",
+                values={"x0": -np.pi, "x1": 12.275},
+            )
+        ),
+        "min2": (
+            Config(
+                config_id="min2",
+                description="This point yields a global optimum of y:0.39787",
+                values={"x0": np.pi, "x1": 2.275},
+            )
+        ),
+        "min3": (
+            Config(
+                config_id="min3",
+                description="This point yields a global optimum of y:0.39787",
+                values={"x0": 9.42478, "x1": 2.475},
+            )
+        )
+    }
 )

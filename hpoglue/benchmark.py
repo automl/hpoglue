@@ -72,6 +72,30 @@ class BenchmarkDescription:
     mem_req_mb: int = 1024
     """The memory requirement of the benchmark in mb."""
 
+    predefined_points: Mapping[str, Config] | None = None
+    """
+    Predefined points for the benchmark with their names and descriptions.
+
+    Example:
+    ```
+    {
+        "optimum": Config(
+                        config_id="optimum",
+                        description="This point yields the global optimum",
+                        values={"x": 0.0, "y": 0.0}
+                    ),
+        "worst": Config(
+                        config_id="worst",
+                        description="This point yields the analytical worst value",
+                        values={"x": 1.0, "y": 1.0}
+                    ),
+    }
+    ```
+    """
+
+    extra: Mapping[str, Any] = field(default_factory=dict)
+    """Extra information about the benchmark."""
+
 
 @dataclass(kw_only=True)
 class SurrogateBenchmark:
@@ -417,19 +441,35 @@ class FunctionalBenchmark:
         config_space: ConfigurationSpace | list[Config] | None = None,
         env: Env | None = None,
         mem_req_mb: int = 1024,
+        predefined_points: Mapping[str, tuple[Config, str]] | None = None,
+        extra: Mapping[str, Any] = {},
     ):
         """Create a functional benchmark.
 
         Args:
             name: The name of the benchmark.
+
             metrics: The metrics that the benchmark supports.
+
             query: The query function for the benchmark.
+
             fidelities: The fidelities that the benchmark supports.
+
             costs: The costs that the benchmark supports.
+
             test_metrics: The test metrics that the benchmark supports.
+
             config_space: The configuration space for the benchmark.
+
             env: The environment needed to run this benchmark.
+
             mem_req_mb: The memory requirement of the benchmark in mb.
+
+            predefined_points: Predefined points for the benchmark with their names and
+                                descriptions.
+
+            extra: Extra information about the benchmark.
+
         """
         self.query = query
         self.config_space = config_space
@@ -445,6 +485,8 @@ class FunctionalBenchmark:
             is_tabular=False,
             env=env or Env.empty(),
             mem_req_mb=mem_req_mb,
+            predefined_points=predefined_points,
+            extra=extra,
         )
 
     @property
