@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from ConfigSpace import ConfigurationSpace
@@ -84,3 +84,136 @@ class RandomSearch(Optimizer):
     def tell(self, result: Result) -> None:
         """Tell the optimizer the result of the query."""
         # NOTE(eddiebergman): Random search does nothing with the result
+
+
+class RandomSearchWithPriors(Optimizer):
+    """Random Search Optimizer with Priors over objectives."""
+
+    name = "RandomSearchWithPriors"
+
+    support = Problem.Support(
+        objectives=("single", "many"),
+        fidelities=(None),
+        cost_awareness=(None),
+        tabular=False,
+        priors=True,
+    )
+
+    mem_req_mb = 1024
+
+    def __init__(  # noqa: D107
+        self,
+        problem: Problem,
+        seed: int,
+        working_directory: Path,  # noqa: ARG002
+        mo_prior_sampling: Literal["random", "equal"] = "random",
+    ) -> None:
+        self.config_space = problem.config_space
+        self.config_space.seed(seed)
+        self.problem = problem
+        _priors: Mapping[str, Config] = self.problem.priors
+        self.priors = {
+            obj: _create_normal_prior(
+                config_space=self.config_space,
+                seed=seed,
+                prior_defaults=prior,
+                std=0.25,
+            )
+            for obj, prior in _priors.items()
+        }
+        self._rng = np.random.default_rng(seed)
+        if mo_prior_sampling == "equal":
+            assert len(self.problem.get_objectives()) <= self.problem.budget.total, (
+                "When using `mo_prior_sampling='equal'` the number of objectives "
+                "should be less than or equal to the total budget."
+            )
+        self.mo_prior_sampling = mo_prior_sampling
+        self._optmizer_unique_id = 0
+        self._priors_used = {key: 0 for key in self.priors}
+
+    def ask(self) -> Query:
+        self._optmizer_unique_id += 1
+        if len(self.priors) > 1:
+            match self.mo_prior_sampling:
+                case "random":
+                    prior = self._rng.choice(list(self.priors.values()))
+                case "equal":
+                    raise NotImplementedError
+                case _:
+                    raise ValueError(
+                        "Invalid value for `mo_prior_sampling`. "
+                        "Expected one of ['random', 'equal']."
+                        f"Got {self.mo_prior_sampling}."
+                    )
+        else:
+            prior = next(iter(self.priors.values()))
+        config = Config(
+            config_id=str(self._optmizer_unique_id),
+            values=dict(prior.sample_configuration()),
+        )
+        return Query(config=config, fidelity=None)
+
+    def tell(self, result: Result) -> None:
+        return
+
+
+def _create_normal_prior(
+    config_space: ConfigurationSpace,
+    seed: int,
+    prior_defaults: Config,
+    std: float,
+) -> ConfigurationSpace:
+    from ConfigSpace import (
+    BetaFloatHyperparameter,
+    BetaIntegerHyperparameter,
+    CategoricalHyperparameter,
+    Constant,
+    NormalFloatHyperparameter,
+    NormalIntegerHyperparameter,
+    OrdinalHyperparameter,
+    UniformFloatHyperparameter,
+    UniformIntegerHyperparameter,
+)
+    prior_space = ConfigurationSpace(seed=seed)
+    for hp in list(config_space.values()):
+        _default = prior_defaults.values[hp.name]
+        match hp:
+            case UniformFloatHyperparameter() | BetaFloatHyperparameter():
+                prior_space.add(
+                    NormalFloatHyperparameter(
+                        name=hp.name,
+                        mu=_default,
+                        sigma=std,
+                        lower=hp.lower,
+                        upper=hp.upper,
+                        default_value=_default,
+                        log=hp.log,
+                    )
+                )
+            case UniformIntegerHyperparameter() | BetaIntegerHyperparameter():
+                prior_space.add(
+                    NormalIntegerHyperparameter(
+                        name=hp.name,
+                        mu=_default,
+                        sigma=std,
+                        lower=hp.lower,
+                        upper=hp.upper,
+                        default_value=_default,
+                        log=hp.log,
+                    )
+                )
+            case CategoricalHyperparameter() | OrdinalHyperparameter():
+                hp.default_value = _default
+                prior_space.add(hp)
+            case Constant():
+                prior_space.add(hp)
+            case NormalFloatHyperparameter() | NormalIntegerHyperparameter():
+                hp.mu = _default
+                hp.sigma = std
+                hp.default_value = _default
+                prior_space.add(hp)
+            case _:
+                raise ValueError(
+                    f"Unsupported hyperparameter type: {type(hp).__name__}"
+                )
+    return prior_space
