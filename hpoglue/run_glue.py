@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from hpoglue._run import _run
 from hpoglue.benchmark import FunctionalBenchmark
+from hpoglue.config import Config
 from hpoglue.problem import Problem
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ def run_glue(
     seed=0,
     *,
     continuations: bool = True,
+    priors: Mapping[str, Config | Mapping[str, Any]] = {},
 ) -> pd.DataFrame:
     """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
 
@@ -36,26 +38,35 @@ def run_glue(
             Defaults to 1, the first objective in the benchmark.
 
         fidelities: The fidelities for the benchmark.
-            Defaults to None.
 
         optimizer_hyperparameters: Hyperparameters for the optimizer.
-            Defaults to an empty dictionary.
 
-        run_name: An optional name for the run. Defaults to None.
+        run_name: An optional name for the run.
 
-        budget: The budget allocated for the run. Defaults to 50.
+        budget: The budget allocated for the run.
 
         seed: The seed for random number generation to ensure reproducibility.
-            Defaults to 0.
 
         continuations: Whether to use continuations for the run.
-            Defaults to True.
+
+        priors: Priors to use for the run.
 
     Returns:
         The result of the _run function as a pandas DataFrame.
     """
+    # TODO: If the priors are dicts, then convert them into a config object.
+
     if isinstance(benchmark, FunctionalBenchmark):
         benchmark = benchmark.description
+
+    if priors:
+        for k, v in priors.items():
+            if isinstance(v, Mapping):
+                priors[k] = Config(
+                    config_id=k,
+                    values=v,
+                )
+
     problem = Problem.problem(
         optimizer=optimizer,
         optimizer_hyperparameters=optimizer_hyperparameters,
@@ -64,6 +75,7 @@ def run_glue(
         fidelities=fidelities,
         budget=budget,
         continuations=continuations,
+        priors=priors,
     )
 
     history = _run(
@@ -72,10 +84,17 @@ def run_glue(
         seed=seed,
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
-    return _df.assign(
+    _df = _df.assign(
         seed=seed,
         optimizer=problem.optimizer.name,
-        optimizer_hps=problem.optimizer_hyperparameters,
+    )
+    if len(problem.optimizer_hyperparameters) > 0:
+        _df["optimizer_hps"] = ",".join(
+            f"{k}={v}" for k, v in problem.optimizer_hyperparameters.items()
+        )
+    else:
+        _df["optimizer_hps"] = "default"
+    return _df.assign(
         benchmark=problem.benchmark.name,
         objectives=[problem.get_objectives()]*len(_df),
         fidelities=[problem.get_fidelities()*len(_df)] if problem.get_fidelities() else None,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
@@ -112,6 +113,11 @@ class Problem:
     continuations: bool = field(default=True)
     """Whether the problem supports continuations."""
 
+    priors: Mapping[str, Config] = field(default_factory=dict)
+    """Priors to use for the problem's objectives.
+        Format: {objective_name: prior Config}
+    """
+
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         self.config_space = self.benchmark.config_space
         self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
@@ -185,7 +191,7 @@ class Problem:
 
 
     @classmethod
-    def problem(  # noqa: C901, PLR0912, PLR0915
+    def problem(  # noqa: C901, PLR0912, PLR0913, PLR0915
         cls,
         *,
         optimizer: type[Optimizer] | OptWithHps,
@@ -198,6 +204,7 @@ class Problem:
         multi_objective_generation: Literal["mix_metric_cost", "metric_only"] = "mix_metric_cost",
         precision: int | None = None,
         continuations: bool = True,
+        priors: Mapping[str, Any] = {},
     ) -> Problem:
         """Generate a problem for this optimizer and benchmark.
 
@@ -223,6 +230,8 @@ class Problem:
             precision: The precision to use for the problem.
 
             continuations: Whether to use continuations for the problem.
+
+            priors: Priors to use for the problem's objectives.
         """
         _fid: tuple[str, Fidelity] | Mapping[str, Fidelity] | None
         match fidelities:
@@ -404,6 +413,7 @@ class Problem:
             costs=_cost,
             precision=precision,
             continuations=continuations,
+            priors=priors,
         )
 
         support: Problem.Support = optimizer.support
@@ -608,6 +618,7 @@ class Problem:
         fidelities: tuple[Literal[None, "single", "many"], ...] = field(default=(None,))
         cost_awareness: tuple[Literal[None, "single", "many"], ...] = field(default=(None,))
         tabular: bool = False
+        priors: bool = False
 
         def __post_init__(self) -> None:
             match self.objectives:
@@ -647,7 +658,7 @@ class Problem:
                         f"{type(self.cost_awareness)}, expected tuple!"
                     )
 
-        def check_opt_support(self, who: str, *, problem: Problem) -> None:
+        def check_opt_support(self, who: str, *, problem: Problem) -> None:  # noqa: C901
             """Check if the problem is supported by the support."""
             match problem.fidelities:
                 case None if None not in self.fidelities:
@@ -692,3 +703,10 @@ class Problem:
                     raise ValueError(
                         f"Optimizer {who} does not support tabular benchmarks for {problem.name}!"
                     )
+
+            if problem.priors and not self.priors:
+                warnings.warn(
+                    f"Optimizer {who} does not support priors",
+                    stacklevel=2,
+                )
+                problem.priors = {}
