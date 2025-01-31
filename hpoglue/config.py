@@ -20,6 +20,10 @@ class Config:
     In the case this config was deserialized, it will likely be `None`.
     """
 
+    description: str | None = None
+    """A description of the configuration."""
+
+
     def to_tuple(self, precision: int | None = None) -> tuple:
         """Convert the configuration values to a tuple with specified precision.
 
