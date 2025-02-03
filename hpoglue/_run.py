@@ -124,7 +124,7 @@ def _run(
     return history
 
 
-def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
+def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
     *,
     run_name: str,
     optimizer: Optimizer,

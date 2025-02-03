@@ -132,6 +132,7 @@ class RandomSearchWithPriors(Optimizer):
         self._priors_used = {key: 0 for key in self.priors}
 
     def ask(self) -> Query:
+        """Ask the optimizer for a new config to evaluate."""
         self._optmizer_unique_id += 1
         if len(self.priors) > 1:
             match self.mo_prior_sampling:
@@ -154,7 +155,8 @@ class RandomSearchWithPriors(Optimizer):
         return Query(config=config, fidelity=None)
 
     def tell(self, result: Result) -> None:
-        return
+        """Tell the optimizer the result of the query."""
+        # NOTE(eddiebergman): Random search does nothing with the result
 
 
 def _create_normal_prior(

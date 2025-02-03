@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from hpoglue.optimizer import Optimizer
 
 
-def run_glue(
+def run_glue(  # noqa: C901, PLR0912
     optimizer: type[Optimizer],
     benchmark: BenchmarkDescription | FunctionalBenchmark,
     objectives: int | str | list[str] = 1,
