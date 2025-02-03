@@ -16,14 +16,14 @@ if TYPE_CHECKING:
 
 
 def run_glue(
-    optimizer: Optimizer,
+    optimizer: type[Optimizer],
     benchmark: BenchmarkDescription | FunctionalBenchmark,
     objectives: int | str | list[str] = 1,
     fidelities: int | str | list[str] | None = None,
-    optimizer_hyperparameters: Mapping[str, int | float] = {},
+    optimizer_hyperparameters: Mapping[str, int | float] | None = None,
     run_name: str | None = None,
-    budget=50,
-    seed=0,
+    budget: int | float = 50,
+    seed: int = 0,
     *,
     continuations: bool = True,
     priors: Mapping[str, Config | Mapping[str, Any]] = {},
@@ -66,6 +66,7 @@ def run_glue(
                     config_id=k,
                     values=v,
                 )
+    optimizer_hyperparameters = optimizer_hyperparameters or {}
 
     problem = Problem.problem(
         optimizer=optimizer,
@@ -84,6 +85,39 @@ def run_glue(
         seed=seed,
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
+    fidelities = problem.get_fidelities()
+    match fidelities:
+        case None:
+            _fidelities = None
+        case str():
+            _fidelities = [fidelities] * len(_df)
+        case list():
+            _fidelities = fidelities * len(_df)
+        case _:
+            raise ValueError(f"Unsupported fidelities type: {type(fidelities)}")
+
+    costs = problem.get_costs()
+    match costs:
+        case None:
+            _costs = None
+        case str():
+            _costs = [costs] * len(_df)
+        case list():
+            _costs = costs * len(_df)
+        case _:
+            raise ValueError(f"Unsupported costs type: {type(costs)}")
+
+    objs = problem.get_objectives()
+    match objs:
+        case None:
+            _objectives = None
+        case str():
+            _objectives = [objs] * len(_df)
+        case list():
+            _objectives = objs * len(_df)
+        case _:
+            raise ValueError(f"Unsupported objectives type: {type(objs)}")
+
     _df = _df.assign(
         seed=seed,
         optimizer=problem.optimizer.name,
@@ -96,7 +130,7 @@ def run_glue(
         _df["optimizer_hps"] = "default"
     return _df.assign(
         benchmark=problem.benchmark.name,
-        objectives=[problem.get_objectives()]*len(_df),
-        fidelities=[problem.get_fidelities()*len(_df)] if problem.get_fidelities() else None,
-        costs=[problem.get_costs()*len(_df)] if problem.get_costs() else None,
+        objectives=_objectives,
+        fidelities=fidelities,
+        costs=costs,
     )

@@ -9,6 +9,7 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
 from tqdm import TqdmWarning, tqdm
 
 from hpoglue.budget import CostBudget, TrialBudget
@@ -42,40 +43,38 @@ class Conf:
     t: tuple
     fid: int | float
 
+
 @dataclass
-class Runtime_hist:
+class RuntimeHist:
     configs: dict[tuple, dict[str, list[int | float]]] = field(default_factory=dict)
 
-    def add_conf(
-        self,
-        config: Conf,
-        fid_type: str
-    ) -> int:
-        flag = 0
+    def add_conf(self, config: Conf, fid_name: str) -> bool:
         if config.t not in self.configs:
-            self.configs[config.t] = {
-                fid_type: [config.fid]
-            }
-        elif fid_type not in self.configs[config.t]:
-            self.configs[config.t][fid_type] = [config.fid]
-        elif config.fid in self.configs[config.t][fid_type]:
+            self.configs[config.t] = {fid_name: [config.fid]}
+            return False
+
+        if fid_name not in self.configs[config.t]:
+            self.configs[config.t][fid_name] = [config.fid]
+            return False
+
+        if config.fid in self.configs[config.t][fid_name]:
             warnings.warn(
                 f"Fidelity {config.fid} sampled twice by Optimizer for config {config.t}!",
-                stacklevel=2
+                stacklevel=2,
             )
-            flag = 1
-        elif config.fid < self.configs[config.t][fid_type][-1]:
-            raise NotImplementedError("Decreasing fidelity not yet implemented!")
-        elif config.fid not in self.configs[config.t][fid_type]:
-            self.configs[config.t][fid_type].append(config.fid)
-        return flag
+            return True
 
-    def get_continuations_cost(
-            self,
-            config: Conf,
-            fid_type: str
-    ) -> float:
-        fid_list = self.configs[config.t][fid_type]
+        if config.fid < self.configs[config.t][fid_name][-1]:
+            raise NotImplementedError("Decreasing fidelity not yet implemented!")
+
+        if config.fid not in self.configs[config.t][fid_name]:
+            self.configs[config.t][fid_name].append(config.fid)
+            return False
+
+        raise NotImplementedError("Unknown error in adding configuration to history!")
+
+    def get_continuations_cost(self, config: Conf, fid_name: str) -> float:
+        fid_list = self.configs[config.t][fid_name]
         if len(fid_list) == 1:
             return fid_list[0]
         return fid_list[-1] - fid_list[-2]
@@ -148,54 +147,55 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
     # NOTE(eddiebergman): Ignore the tqdm warning about the progress bar going past max
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=TqdmWarning)
-        runhist = Runtime_hist()
+        runhist = RuntimeHist()
 
         with ctx() as pbar:
             while used_budget < budget_total:
                 try:
                     query = optimizer.ask()
 
-                    #TODO: Temporary fix for problems without fidelities
-                    if problem.fidelities is None:
-                        result = benchmark.query(query)
-
-                    else:
-                        config = Conf(
-                            query.config.to_tuple(problem.precision),
-                            query.fidelity[1]
-                        )
-
-                        resample_flag = False
-                        flag = runhist.add_conf(
-                            config=config,
-                            fid_type=problem.fidelities[0]
-                            #TODO: Raise Manyfidelity NotImplementedError
-                        )
-                        if flag == 1:
-                            resample_flag = True
-
-                        if resample_flag:
-                        # NOTE: Not a cheap operation since we don't store the costs
-                        # in the continuations dict
-                            for res in history:
-                                if (
-                                    Conf(
-                                        res.config.to_tuple(problem.precision),
-                                        res.fidelity[1]) == config
-                                    ):
-                                    result = res
-                                    if query.config_id == result.query.config_id:
-                                        raise ValueError(
-                                            "Resampled configuration has same config_id in history!"
-                                        )
-                                    result.query = query
-                        else:
+                    match query.fidelity:
+                        case None:
                             result = benchmark.query(query)
-                            if problem.continuations:
-                                result.continuations_cost = runhist.get_continuations_cost(
-                                    config=config,
-                                    fid_type=problem.fidelities[0]
-                                )
+                        case Mapping():
+                            raise NotImplementedError("Manyfidelity not yet implemented")
+                        case (fid_name, fid_value):
+                            config = Conf(query.config.to_tuple(problem.precision), fid_value)
+                            exist_already = runhist.add_conf(config=config, fid_name=fid_name)
+
+                            if exist_already:
+                                # NOTE: Not a cheap operation since we don't store the costs
+                                # in the continuations dict
+                                result = None
+                                for existing_result in history:
+                                    tup = existing_result.config.to_tuple(problem.precision)
+                                    if Conf(tup, fid_value) == config:
+                                        if query.config_id == existing_result.query.config_id:
+                                            raise ValueError(
+                                                "Resampled configuration has same config_id"
+                                                " in history!"
+                                            )
+                                        existing_result.query = query
+                                        result = existing_result
+                                        break
+
+                                if result is None:
+                                    raise ValueError(
+                                        "Resampled configuration not found in history!"
+                                    )
+
+                            else:
+                                result = benchmark.query(query)
+                                if problem.continuations:
+                                    result.continuations_cost = runhist.get_continuations_cost(
+                                        config=config,
+                                        fid_name=fid_name,
+                                    )
+                        case _:
+                            raise TypeError(
+                                "Fidelity must be None, tuple(str, value), or Mapping[str, fid]"
+                                f" but got: {query.fidelity}"
+                            )
 
                     budget_cost = _trial_budget_cost(
                         value=result.fidelity,
@@ -211,6 +211,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912
                     history.append(result)
                     if pbar is not None:
                         pbar.update(budget_cost)
+
                 except Exception as e:
                     logger.exception(e)
                     logger.error(f"Error running {run_name}: {e}")
@@ -237,7 +238,7 @@ def _trial_budget_cost(
             return 1
 
         case (name, v):
-            assert isinstance(v, int | float)
+            assert isinstance(v, int | float | np.integer | np.floating)
             assert isinstance(problem_fids, tuple)
             assert problem_fids[0] == name
             normed_value = rescale(
@@ -253,7 +254,7 @@ def _trial_budget_cost(
             assert len(value) == len(problem_fids)
             normed_fidelities: list[float] = []
             for k, v in value.items():
-                assert isinstance(v, int | float)
+                assert isinstance(v, int | float | np.integer | np.floating)
                 assert isinstance(problem_fids[k], Fidelity)
                 normed_fid = rescale(
                     v,
