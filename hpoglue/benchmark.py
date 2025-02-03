@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from hpoglue.measure import Measure
     from hpoglue.query import Query
 
-    class TrajectoryF(Protocol):
-        def __call__(
+    class TrajectoryF(Protocol):  # noqa: D101
+        def __call__(  # noqa: D102
             self,
             *,
             query: Query,
@@ -134,7 +134,7 @@ class SurrogateBenchmark:
     If not provided, the query will be called repeatedly to generate this.
     """
 
-    def trajectory(
+    def trajectory(  # noqa: D102
         self,
         *,
         query: Query,
@@ -430,7 +430,7 @@ class FunctionalBenchmark:
     If not provided, the query will be called repeatedly to generate this.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         metrics: Mapping[str, Measure],

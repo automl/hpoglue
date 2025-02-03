@@ -4,8 +4,8 @@ from collections.abc import Iterator, Sequence, Sized
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar, runtime_checkable
 from typing_extensions import Self
-import numpy as np
 
+import numpy as np
 
 T = TypeVar("T", bound=int | float)
 
