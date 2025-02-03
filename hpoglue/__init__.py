@@ -11,17 +11,19 @@ from hpoglue.optimizer import Optimizer
 from hpoglue.problem import Problem
 from hpoglue.query import Query
 from hpoglue.result import Result
+from hpoglue.run_glue import run_glue as run
 
 __all__ = [
-    "BenchmarkDescription",
-    "FunctionalBenchmark",
-    "TabularBenchmark",
-    "SurrogateBenchmark",
     "Benchmark",
+    "BenchmarkDescription",
+    "Config",
+    "FunctionalBenchmark",
+    "Measure",
     "Optimizer",
     "Problem",
-    "Config",
-    "Result",
     "Query",
-    "Measure",
+    "Result",
+    "SurrogateBenchmark",
+    "TabularBenchmark",
+    "run",
 ]

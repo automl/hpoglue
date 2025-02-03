@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from hpoglue.budget import CostBudget, TrialBudget
-from hpoglue.config import Config
+from hpoglue.config import PRECISION, Config
 from hpoglue.fidelity import Fidelity, ListFidelity, RangeFidelity
 from hpoglue.measure import Measure
 from hpoglue.optimizer import Optimizer
@@ -70,7 +70,7 @@ class Problem:
     budget: BudgetType
     """The type of budget to use for the optimizer."""
 
-    optimizer: type[Optimizer] | OptWithHps
+    optimizer: type[Optimizer]
     """The optimizer to use for this problem"""
 
     optimizer_hyperparameters: Mapping[str, int | float] = field(default_factory=dict)
@@ -102,7 +102,7 @@ class Problem:
         This is used to identify the problem.
     """
 
-    precision: int = field(default=12) #TODO: Set default
+    precision: int = field(default=12)  # TODO: Set default
     """The precision to use for the problem."""
 
     mem_req_mb: int = field(init=False)
@@ -133,15 +133,14 @@ class Problem:
         ]
 
         if len(self.optimizer_hyperparameters) > 0:
-            name_parts.insert(1,
-                ",".join(f"{k}={v}" for k, v in self.optimizer_hyperparameters.items())
+            name_parts.insert(
+                1, ",".join(f"{k}={v}" for k, v in self.optimizer_hyperparameters.items())
             )
 
         self.is_multiobjective: bool
         match self.objectives:
             case tuple():
                 self.is_multiobjective = False
-                # name_parts.append(f"objectives={self.objectives[0]}")
             case Mapping():
                 if len(self.objectives) == 1:
                     raise ValueError("Single objective should be a tuple, not a mapping")
@@ -163,7 +162,6 @@ class Problem:
                     self.supports_trajectory = True
                 else:
                     self.supports_trajectory = False
-                # name_parts.append(f"fidelities={_name}")
             case Mapping():
                 if len(self.fidelities) == 1:
                     raise ValueError("Single fidelity should be a tuple, not a mapping")
@@ -171,7 +169,6 @@ class Problem:
                 self.is_multifidelity = False
                 self.is_manyfidelity = True
                 self.supports_trajectory = False
-                # name_parts.append("fidelities=" + ",".join(self.fidelities.keys()))
             case _:
                 raise TypeError("Fidelity must be a tuple (name, fidelity) or a mapping")
 
@@ -179,25 +176,21 @@ class Problem:
             case None:
                 pass
             case (_name, _measure):
-                # name_parts.append(f"costs={_name}")
                 pass
             case Mapping():
                 if len(self.costs) == 1:
                     raise ValueError("Single cost should be a tuple, not a mapping")
 
-                # name_parts.append("costs=" + ",".join(self.costs.keys()))
-
         self.name = ".".join(name_parts)
-
 
     @classmethod
     def problem(  # noqa: C901, PLR0912, PLR0913, PLR0915
         cls,
         *,
-        optimizer: type[Optimizer] | OptWithHps,
+        optimizer: type[Optimizer],
         optimizer_hyperparameters: Mapping[str, int | float] = {},
         benchmark: BenchmarkDescription,
-        budget: BudgetType | int,
+        budget: BudgetType | int | float,
         fidelities: int | str | list[str] | None = None,
         objectives: int | str | list[str] = 1,
         costs: int = 0,
@@ -301,7 +294,7 @@ class Problem:
         _obj: tuple[str, Measure] | Mapping[str, Measure]
         match objectives, multi_objective_generation:
             # single objective
-            case int(), _ if objectives < 0:
+            case int(), _ if objectives < 0:  # type: ignore
                 raise ValueError(f"{objectives=} must be >= 0")
             case _, str() if multi_objective_generation not in {"mix_metric_cost", "metric_only"}:
                 raise ValueError(
@@ -311,56 +304,56 @@ class Problem:
             case 1, _:
                 _obj = first(benchmark.metrics)
             case int(), "metric_only":
-                if objectives > len(benchmark.metrics):
+                if objectives > len(benchmark.metrics):  # type: ignore
                     raise ValueError(
                         f"{objectives=} is greater than the number of metrics"
                         f" in benchmark {benchmark.name} which has {len(benchmark.metrics)} metrics"
                     )
-                _obj = first_n(objectives, benchmark.metrics)
+                _obj = first_n(objectives, benchmark.metrics)  # type: ignore
             case int(), "mix_metric_cost":
                 n_costs = 0 if benchmark.costs is None else len(benchmark.costs)
                 n_available = len(benchmark.metrics) + n_costs
-                if objectives > n_available:
+                if objectives > n_available:  # type: ignore
                     raise ValueError(
                         f"{objectives=} is greater than the number of metrics and costs"
                         f" in benchmark {benchmark.name} which has {n_available} objectives"
                         " when combining metrics and costs",
                     )
                 if benchmark.costs is None:
-                    _obj = first_n(objectives, benchmark.metrics)
+                    _obj = first_n(objectives, benchmark.metrics)  # type: ignore
                 else:
-                    _obj = mix_n(objectives, benchmark.metrics, benchmark.costs)
+                    _obj = mix_n(objectives, benchmark.metrics, benchmark.costs)  # type: ignore
             case str(), _:
                 if objectives not in benchmark.metrics:
                     raise ValueError(
                         f"{objectives=} not found in benchmark {benchmark.name} metrics",
                     )
-                _obj = (objectives, benchmark.metrics[objectives])
+                _obj = (objectives, benchmark.metrics[objectives])  # type: ignore
             case list(), "metric_only":
-                if len(objectives) > len(benchmark.metrics):
+                if len(objectives) > len(benchmark.metrics):  # type: ignore
                     raise ValueError(
                         f"{objectives=} is greater than the number of metrics"
                         f" in benchmark {benchmark.name} which has {len(benchmark.metrics)} metrics"
                     )
-                _obj = {name: benchmark.metrics[name] for name in objectives}
+                _obj = {name: benchmark.metrics[name] for name in objectives}  # type: ignore
             case list(), "mix_metric_cost":
                 n_costs = 0 if benchmark.costs is None else len(benchmark.costs)
                 n_available = len(benchmark.metrics) + n_costs
-                if len(objectives) > n_available:
+                if len(objectives) > n_available:  # type: ignore
                     raise ValueError(
                         f"{objectives=} is greater than the number of metrics and costs"
                         f" in benchmark {benchmark.name} which has {n_available} objectives"
                         " when combining metrics and costs",
                     )
                 if benchmark.costs is None:
-                    for obj in objectives:
+                    for obj in objectives:  # type: ignore
                         if obj not in benchmark.metrics:
                             raise ValueError(
                                 f"{obj=} not found in benchmark {benchmark.name} metrics",
                             )
-                    _obj = {name: benchmark.metrics[name] for name in objectives}
+                    _obj = {name: benchmark.metrics[name] for name in objectives}  # type: ignore
                 else:
-                    _obj = mix_n(len(objectives), benchmark.metrics, benchmark.costs)
+                    _obj = mix_n(len(objectives), benchmark.metrics, benchmark.costs)  # type: ignore
             case _, _:
                 raise RuntimeError(
                     f"Unexpected case with {objectives=}, {multi_objective_generation=}",
@@ -393,6 +386,8 @@ class Problem:
                 raise ValueError(f"{budget=} must be >= 0")
             case int():
                 _budget = TrialBudget(budget)
+            case float():
+                _budget = CostBudget(budget)
             case TrialBudget():
                 _budget = budget
             case CostBudget():
@@ -400,7 +395,9 @@ class Problem:
             case _:
                 raise TypeError(f"Unexpected type for `{budget=}`: {type(budget)}")
 
-        if "single" not in optimizer.support.fidelities:
+        _opt = optimizer[0] if isinstance(optimizer, tuple) else optimizer
+
+        if "single" not in _opt.support.fidelities:
             continuations = False
 
         problem = Problem(
@@ -411,16 +408,15 @@ class Problem:
             fidelities=_fid,
             objectives=_obj,
             costs=_cost,
-            precision=precision,
+            precision=precision if precision is not None else PRECISION,
             continuations=continuations,
             priors=priors,
         )
 
-        support: Problem.Support = optimizer.support
-        support.check_opt_support(who=optimizer.name, problem=problem)
+        support: Problem.Support = _opt.support
+        support.check_opt_support(who=_opt.name, problem=problem)
 
         return problem
-
 
     def get_objectives(self) -> str | list[str]:
         """Retrieve the objectives of the problem.
@@ -433,7 +429,6 @@ class Problem:
             if isinstance(self.objectives, Mapping)
             else self.objectives[0]
         )
-
 
     def get_fidelities(self) -> str | list[str] | None:
         """Retrieve the fidelities associated with the object.
@@ -449,7 +444,6 @@ class Problem:
             else self.fidelities[0]
         )
 
-
     def get_costs(self) -> str | list[str] | None:
         """Retrieve the costs associated with the object.
 
@@ -463,7 +457,6 @@ class Problem:
             if isinstance(self.costs, Mapping)
             else self.costs[0]
         )
-
 
     def group_for_optimizer_comparison(
         self,
@@ -605,7 +598,7 @@ class Problem:
             costs=costs,
             budget=budget,
             benchmark=benchmark,
-            optimizer=optimizer,
+            optimizer=optimizer.__class__,
             optimizer_hyperparameters=data["optimizer_hyperparameters"],
             continuations=data["continuations"],
         )
@@ -626,8 +619,6 @@ class Problem:
                     pass
                 case str():
                     self.objectives = (self.objectives,)
-                case None:
-                    self.objectives = (None,)
                 case _:
                     raise ValueError(
                         "Invalid type for optimizer support objectives: "

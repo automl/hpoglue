@@ -4,6 +4,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
+from hpoglue.result import Result
+
 if TYPE_CHECKING:
     from hpoglue.config import Config
 
@@ -15,7 +17,7 @@ class Query:
     config: Config
     """ The config to evaluate """
 
-    fidelity: tuple[str, int | float] | Mapping[str, int | float] | None
+    fidelity: tuple[str, int | float] | Mapping[str, int | float] | None = None
     """What fidelity to evaluate at."""
 
     optimizer_info: Any | None = None
@@ -69,6 +71,14 @@ class Query:
     ) -> Query:
         """Create a new query with a different fidelity."""
         return replace(self, fidelity=fidelity)
+
+    def make_result(self, results: dict[str, Any]) -> Result:
+        """Create a result from the query."""
+        return Result(
+            query=self,
+            fidelity=self.fidelity,
+            values=results,
+        )
 
     def _to_dict(self) -> dict[str, Any]:
         return {

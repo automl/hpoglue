@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence, Sized
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar, runtime_checkable
-
-
-@runtime_checkable
-class Orderable(Protocol):
-    def __lt__(self, other: Orderable) -> bool: ...
-    def __gt__(self, other: Orderable) -> bool: ...
-    def __le__(self, other: Orderable) -> bool: ...
-    def __ge__(self, other: Orderable) -> bool: ...
-    def __eq__(self, other: Orderable) -> bool: ...
+from typing_extensions import Self
+import numpy as np
 
 
 T = TypeVar("T", bound=int | float)
@@ -19,16 +12,59 @@ T = TypeVar("T", bound=int | float)
 
 @runtime_checkable
 class Fidelity(Protocol[T]):
+    """A protocol to represent a Fidelity type, which includes a minimum and maximum value of a
+    specific type, along with additional metadata such as the type of the values and whether
+    continuation is supported.
+    """
+
     kind: type[T]
     min: T
     max: T
     supports_continuation: bool
 
-    def __iter__(self) -> Iterator[T]: ...
+    @classmethod
+    def frm(
+        cls,
+        values: tuple[T, T] | tuple[T, T, T] | Sequence[T] | range,
+        *,
+        supports_continuation: bool = False,
+    ) -> Fidelity:
+        """Create a Fidelity instance from a tuple, sequence, or range object.
+
+        Args:
+            values: A tuple of two or three values, a sequence of values, or a range object.
+
+                - If a tuple of two values, the values are the minimum and maximum values,
+                    considered on a conitnuous range.
+                - If a tuple of three values, the values are the minimum, maximum, and step size,
+                  giving a discrete number of fidelity values.
+                - If a sequence of values, the values are the fidelity values, which is just
+                    a list of values allowed
+                - If a range object, the values are the start, stop, and step values.
+
+            supports_continuation: A flag indicating if continuation is supported.
+                Defaults to False.
+
+        Returns:
+            Fidelity: An instance of Fidelity with the specified values.
+        """
+        match values:
+            case range():
+                return RangeFidelity.from_range(values, supports_continuation=supports_continuation)
+            case tuple() if len(values) == 2:  # noqa: PLR2004
+                return ContinuousFidelity.from_tuple(
+                    values, supports_continuation=supports_continuation
+                )
+            case tuple() if len(values) == 3:  # noqa: PLR2004
+                return RangeFidelity.from_tuple(values, supports_continuation=supports_continuation)
+            case Sequence():
+                return ListFidelity.from_seq(values, supports_continuation=supports_continuation)
+            case _:
+                raise ValueError(f"Unsupported values type: {type(values)}")
 
 
 @dataclass(kw_only=True, frozen=True)
-class ListFidelity(Generic[T]):
+class ListFidelity(Fidelity, Sized, Generic[T]):
     """A class to represent a List Fidelity type, which includes a sorted list of values of a
     specific type, along with additional metadata such as the minimum and maximum values,
     and whether the list supports continuation.
@@ -44,11 +80,15 @@ class ListFidelity(Generic[T]):
 
         supports_continuation: A boolean flag indicating if the list supports continuation.
     """
+
     kind: type[T]
     values: tuple[T, ...]
     min: T
     max: T
     supports_continuation: bool
+
+    def __len__(self) -> int:
+        return len(self.values)
 
     @classmethod
     def from_seq(
@@ -82,7 +122,7 @@ class ListFidelity(Generic[T]):
 
 
 @dataclass(kw_only=True, frozen=True)
-class RangeFidelity(Generic[T]):
+class RangeFidelity(Fidelity, Sized, Generic[T]):
     """A class to represent a Range Fidelity type that iterates over a range of values with a
         specified step size.
 
@@ -97,6 +137,7 @@ class RangeFidelity(Generic[T]):
 
         supports_continuation: A boolean flag indicating if continuation is supported.
     """
+
     kind: type[T]
     min: T
     max: T
@@ -107,12 +148,30 @@ class RangeFidelity(Generic[T]):
         if self.min >= self.max:
             raise ValueError(f"min must be less than max, got {self.min} and {self.max}")
 
+        if self.stepsize <= 0:
+            raise ValueError(f"stepsize must be greater than 0, got {self.stepsize}")
+
+        # Ensure bounds quantize correctly into `n_values` stepsize chunks
+        n_values = int((self.max - self.min) / self.stepsize) + 1
+        if not np.isclose(self.min + (n_values * self.stepsize) - 1, self.max):
+            raise ValueError(
+                f"stepsize {self.stepsize} does not divide range [{self.min}, {self.max}]"
+            )
+
     def __iter__(self) -> Iterator[T]:
         current = self.min
         yield self.min
         while current < self.max:
             current += self.stepsize
             yield max(current, self.max)  # type: ignore
+
+    @property
+    def n_values(self) -> int:
+        """The number of values in the range."""
+        return int((self.max - self.min) / self.stepsize) + 1
+
+    def __len__(self) -> int:
+        return self.n_values
 
     @classmethod
     def from_tuple(
@@ -140,6 +199,9 @@ class RangeFidelity(Generic[T]):
         if _type not in (int, float):
             raise ValueError(f"all values must be of type int or float, got {_type}")
 
+        if len(values) != 3:  # noqa: PLR2004
+            raise ValueError(f"expected 3 values, got {len(values)}")
+
         if not all(isinstance(v, _type) for v in values):
             raise ValueError(f"all values must be of type {_type}, got {values}")
 
@@ -151,8 +213,28 @@ class RangeFidelity(Generic[T]):
             supports_continuation=supports_continuation,
         )
 
+    @classmethod
+    def from_range(cls, r: range, *, supports_continuation: bool = False) -> Self:
+        """Create a RangeFidelity instance from a range object.
+
+        Args:
+            r: A range object.
+            supports_continuation: A flag indicating if continuation is supported.
+
+        Returns:
+            RangeFidelity: An instance of RangeFidelity with the specified values.
+        """
+        return cls(
+            kind=int,
+            min=r.start,
+            max=r.stop,
+            stepsize=r.step,
+            supports_continuation=supports_continuation,
+        )
+
+
 @dataclass(kw_only=True, frozen=True)
-class ContinuousFidelity(Generic[T]):
+class ContinuousFidelity(Fidelity, Generic[T]):
     """A class to represent a continuous fidelity range with a minimum and maximum value.
 
     Attributes:
@@ -164,6 +246,7 @@ class ContinuousFidelity(Generic[T]):
 
         supports_continuation: A boolean flag indicating if continuation is supported.
     """
+
     kind: type[T]
     min: T
     max: T
@@ -172,10 +255,6 @@ class ContinuousFidelity(Generic[T]):
     def __post_init__(self):
         if self.min >= self.max:
             raise ValueError(f"min must be less than max, got {self.min} and {self.max}")
-
-    def __iter__(self) -> Iterator[T]:
-        yield self.min
-        yield self.max
 
     @classmethod
     def from_tuple(
@@ -202,6 +281,9 @@ class ContinuousFidelity(Generic[T]):
         _type = type(values[0])
         if _type not in (int, float):
             raise ValueError(f"all values must be of type int or float, got {_type}")
+
+        if len(values) != 2:  # noqa: PLR2004
+            raise ValueError(f"expected 2 values, got {len(values)}")
 
         if not all(isinstance(v, _type) for v in values):
             raise ValueError(f"all values must be of type {_type}, got {values}")
