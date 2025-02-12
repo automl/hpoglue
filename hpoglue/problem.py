@@ -102,7 +102,7 @@ class Problem:
         This is used to identify the problem.
     """
 
-    precision: int = field(default=12)  # TODO: Set default
+    precision: int = field(default=12)
     """The precision to use for the problem."""
 
     mem_req_mb: int = field(init=False)
@@ -118,7 +118,7 @@ class Problem:
         Format: {objective_name: prior Config}
     """
 
-    def __post_init__(self) -> None:  # noqa: C901, PLR0912
+    def __post_init__(self) -> None:  # noqa: C901, PLR0912, PLR0915
         self.config_space = self.benchmark.config_space
         self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
         self.is_tabular = self.benchmark.is_tabular
@@ -129,13 +129,39 @@ class Problem:
         name_parts: list[str] = [
             f"optimizer={self.optimizer.name}",
             f"benchmark={self.benchmark.name}",
-            self.budget.path_str,
+            "objectives=" + (
+                ",".join(self.get_objectives())
+                if isinstance(self.objectives, Mapping)
+                else self.get_objectives()
+            )
         ]
 
         if len(self.optimizer_hyperparameters) > 0:
             name_parts.insert(
                 1, ",".join(f"{k}={v}" for k, v in self.optimizer_hyperparameters.items())
             )
+
+        if self.fidelities is not None and len(self.benchmark.fidelities) > 1:
+            name_parts.append(
+                "fidelities=" + (
+                    ",".join(self.get_fidelities())
+                    if isinstance(self.fidelities, Mapping)
+                    else self.get_fidelities()
+                )
+            )
+
+        if self.costs is not None:
+            name_parts.append(
+                "costs=" + (
+                    ",".join(self.get_costs())
+                    if isinstance(self.costs, Mapping)
+                    else self.get_costs()
+                )
+            )
+
+        name_parts.append(self.budget.path_str)
+
+        # TODO: Add priors to name_parts
 
         self.is_multiobjective: bool
         match self.objectives:
@@ -146,7 +172,6 @@ class Problem:
                     raise ValueError("Single objective should be a tuple, not a mapping")
 
                 self.is_multiobjective = True
-                name_parts.append("objectives=" + ",".join(self.objectives.keys()))
             case _:
                 raise TypeError("Objectives must be a tuple (name, measure) or a mapping")
 
@@ -365,6 +390,8 @@ class Problem:
                 raise ValueError(f"{costs=} must be >= 0")
             case 0:
                 _cost = None
+            case None:
+                _cost = None
             case 1:
                 if benchmark.costs is None:
                     raise ValueError(
@@ -513,6 +540,7 @@ class Problem:
             "optimizer": self.optimizer.name,
             "optimizer_hyperparameters": self.optimizer_hyperparameters,
             "continuations": self.continuations,
+            "priors": False or self.priors,
         }
 
     @classmethod
