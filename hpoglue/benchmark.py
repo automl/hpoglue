@@ -77,7 +77,7 @@ class BenchmarkDescription:
     Predefined points for the benchmark with their names and descriptions.
 
     Example:
-    ```
+    ``` python
     {
         "optimum": Config(
                         config_id="optimum",
@@ -100,6 +100,9 @@ class BenchmarkDescription:
 @dataclass(kw_only=True)
 class SurrogateBenchmark:
     """Defines the interface for a surrogate benchmark."""
+
+    name: str = field(init=False)
+    """The name of the Surrogate benchmark."""
 
     desc: BenchmarkDescription
     """The description of the benchmark."""
@@ -133,6 +136,9 @@ class SurrogateBenchmark:
 
     If not provided, the query will be called repeatedly to generate this.
     """
+
+    def __post_init__(self) -> None:
+        self.name = self.desc.name
 
     def trajectory(  # noqa: D102
         self,
@@ -179,6 +185,9 @@ class SurrogateBenchmark:
 class TabularBenchmark:
     """Defines the interface for a tabular benchmark."""
 
+    name: str
+    """The name of the Tabular benchmark."""
+
     desc: BenchmarkDescription
     """The description of the benchmark."""
 
@@ -218,6 +227,7 @@ class TabularBenchmark:
             id_key: The key in the table that we want to use as the id.
             config_keys: The keys in the table that we want to use as the config.
         """
+        self.name = desc.name
         # Make sure we work with a clean slate, no issue with index.
         table = table.reset_index()
 
@@ -400,6 +410,9 @@ class TabularBenchmark:
 class FunctionalBenchmark:
     """Defines the interface for a functional benchmark."""
 
+    name: str = field(init=False)
+    """The name of the Functional benchmark."""
+
     desc: BenchmarkDescription
     """The description of the functional benchmark."""
 
@@ -471,6 +484,7 @@ class FunctionalBenchmark:
             extra: Extra information about the benchmark.
 
         """
+        self.name = name
         self.query = query
         self.config_space = config_space
         self.desc = BenchmarkDescription(
@@ -489,11 +503,6 @@ class FunctionalBenchmark:
             extra=extra,
         )
 
-    @property
-    def description(self) -> BenchmarkDescription:
-        """Return the BenchmarkDescription of a FunctionalBenchmark."""
-        return self.desc
-
 
     def load(
         self,
@@ -501,7 +510,6 @@ class FunctionalBenchmark:
     ) -> FunctionalBenchmark:
         """Load the FunctionalBenchmark."""
         return self
-
 
 
     def trajectory(
