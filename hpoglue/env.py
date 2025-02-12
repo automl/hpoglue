@@ -20,10 +20,20 @@ GLUE_GIT_SSH_INSTALL = "git+ssh://git@github.com/automl/hpoglue.git"
 
 @dataclass
 class Env:
+    """Represents an hpoglue environment configuration with a name, Python version,
+    requirements, and post-install commands.
+    """
     name: str
+    """The name of the environment."""
+
     python_version: str = field(default="3.10", repr=False)
+    """The Python version of the environment."""
+
     requirements: tuple[str, ...] = field(default=(), repr=False)
+    """Environment requirements."""
+
     post_install: tuple[str, ...] = field(default=(), repr=False)
+    """Post-install commands."""
 
     def __post_init__(self) -> None:
         match self.requirements:
@@ -34,7 +44,9 @@ class Env:
             case None:
                 self.requirements = ()
             case _:
-                raise ValueError(f"Invalid requirements type: {type(self.requirements)}, expected tuple!")
+                raise ValueError(
+                    f"Invalid requirements type: {type(self.requirements)}, expected tuple!"
+                )
         match self.post_install:
             case tuple():
                 pass
@@ -43,14 +55,30 @@ class Env:
             case None:
                 self.post_install = ()
             case _:
-                raise ValueError(f"Invalid post_install type: {type(self.post_install)}, expected tuple!")
+                raise ValueError(
+                    f"Invalid post_install type: {type(self.post_install)}, expected tuple!"
+                )
 
     @classmethod
     def empty(cls) -> Env:
+        """Create an empty environment instance."""
         return cls(name="empty")
 
     @classmethod
     def merge(cls, one: Env, two: Env) -> Env:
+        """Merges two Env instances into one.
+
+        If the python versions of the two environments differ, the lowest version is chosen
+        and a warning is issued. The resulting environment will have a combination of the
+        requirements and post_install scripts from both environments.
+
+        Args:
+            one: The first environment to merge.
+            two: The second environment to merge.
+
+        Returns:
+            A new environment instance that is the result of merging the two input environments.
+        """
         if one.python_version != two.python_version:
             this = tuple(map(int, one.python_version.split(".")))
             that = tuple(map(int, two.python_version.split(".")))
@@ -84,9 +112,11 @@ class Env:
 
     @property
     def identifier(self) -> str:
+        """Returns the name of the current environment."""
         return self.name
 
     def to_dict(self) -> dict[str, Any]:
+        """Converts the environment configuration to a dictionary."""
         return {
             "name": self.name,
             "python_version": self.python_version,
@@ -96,6 +126,7 @@ class Env:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Env:
+        """Creates an environment configuration from a dictionary."""
         return cls(
             name=data["name"],
             python_version=data["python_version"],
@@ -130,7 +161,9 @@ def get_current_installed_hpoglue_version() -> str:
 
 @dataclass
 class Venv:
+    """Represents a Venv configuration with a path, activate, python, and pip commands."""
     def __init__(self, path: Path) -> None:
+        """Initialize the environment with the given virtual environment path."""
         self.venv_path = path
         self.activate = f"{self.venv_path / 'bin' / 'activate'}"
         self.python = f"{self.venv_path / 'bin' / 'python'}"
@@ -144,6 +177,7 @@ class Venv:
         requirements_file: Path,
         exists_ok: bool = False,
     ) -> None:
+        """Create a virtual environment at the specified path."""
         if self.venv_path.exists() and not exists_ok:
             raise FileExistsError(f"Virtual environment already exists at {self.venv_path}")
 
@@ -170,6 +204,7 @@ class Venv:
             subprocess.run(cmd, check=True)  # noqa: S603
 
     def run(self, cmd: Sequence[str]) -> None:
+        """Run the given command in the virtual environment."""
         cmd = ["source", self.activate, "&&", *cmd]
         logger.debug(cmd)
         subprocess.run(cmd, check=True)  # noqa: S603
