@@ -12,8 +12,8 @@ HPO tool with a modular API that allows for the easy interfacing of a new Optimi
 from hpoglue.run_glue import run_glue
 df = run_glue(
     run_name="hpoglue_ex",
-    optimizer = ...,
-    benchmark = ...,
+    optimizer = ...,    # type[hpoglue.Optimizer]
+    benchmark = ...,    # type[hpoglue.BenchmarkDescription] | type[hpoglue.FunctionalBenchmark]
     seed = 1,
     budget = 50
 )
@@ -130,5 +130,21 @@ df = run_glue(
     benchmark = ACKLEY_BENCH,
     seed = 1,
     budget = 50
+)
+```
+
+## Using Environments from `hpoglue.env.Env`
+
+Environments for Optimizers and Benchmarks can be defined in the following way:
+
+```python
+from hpoglue.env import Env
+environ = Env(
+    name="Dummy_env",
+    python_version="3.10"
+    requirements=("numpy==1.24.4", "scikit-learn==1.5.2")
+    post_install=("mybenchmark --download_data mydataset --datadir /home/someuser/data/")
+    # Only python CLI commands are supported. We automatically append the python -m with the
+    # appropriate python executable from the environment's absolute path
 )
 ```
