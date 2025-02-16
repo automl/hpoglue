@@ -27,6 +27,16 @@ class Config(Mapping[str, Any]):
     """A description of the configuration."""
 
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the configuration values to a dictionary.
+
+        Returns:
+            A dictionary of the configuration values.
+        """
+        assert self.values is not None
+        return self.values
+
+
     def to_tuple(self, precision: int | None = None) -> tuple:
         """Convert the configuration values to a tuple with specified precision.
 
