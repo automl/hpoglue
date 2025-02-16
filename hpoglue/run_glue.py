@@ -5,10 +5,9 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from hpoglue import Config, FunctionalBenchmark, Problem
 from hpoglue._run import _run
-from hpoglue.benchmark import FunctionalBenchmark
-from hpoglue.config import Config
-from hpoglue.problem import Problem
+from hpoglue.utils import dict_to_configpriors
 
 if TYPE_CHECKING:
     from hpoglue.benchmark import BenchmarkDescription
@@ -26,7 +25,7 @@ def run_glue(  # noqa: C901, PLR0912
     seed: int = 0,
     *,
     continuations: bool = True,
-    priors: Mapping[str, Config | Mapping[str, Any]] = {},
+    priors: tuple[str, Mapping[str, Config | Mapping[str, Any]]] | None = None,
 ) -> pd.DataFrame:
     """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
 
@@ -54,26 +53,26 @@ def run_glue(  # noqa: C901, PLR0912
                 Advised usage for priors:
                 --------------------------
 
-                ``` python
-                            priors = {
-                                        "prior_identifier": Config(
-                                            config_id="some identifier for this config ID",
-                                            values={"hyperparameter name": "prior value"},
-                                        )
-                                    }
+                ```python
+                            priors = (
+                                        prior_identifier,
+                                        {
+                                            "objective_name": Config(
+                                                config_id="some identifier for this config ID",
+                                                values={"hyperparameter name": "prior value"},
+                                            )
+                                        }
+                                    )
                 ```
                 NOTE:
-                    > The `prior_identifier` and the prior's `config_id` are used
-                    in conjunction to identify the prior.
+                    > The `prior_identifier` must be unique since it is used to identify the prior.
 
                     > When generating the results, if priors are used the result includes
-                    prior=`prior_identifier`_`config_id` for identification.
+                    prior=`prior_identifier` for identification.
 
-                    > We suggest the `prior_identifier` to be the name of the objective
-                    over which the prior is defined + some unique identifier (eg: good, bad, etc).
-
-                    > If you prefer having the `prior_identifier` to be named as only the
-                    objective, then the `config_id` is advised to be the unique identifier.
+                    > We suggest the `prior_identifier` to be the name of the objective(s)
+                    over which the prior is defined + some unique identifier
+                    (eg: value1_good_value2_bad).
 
     Returns:
         The result of the _run function as a pandas DataFrame.
@@ -82,12 +81,7 @@ def run_glue(  # noqa: C901, PLR0912
         benchmark = benchmark.desc
 
     if priors:
-        for k, v in priors.items():
-            if isinstance(v, dict):
-                priors[k] = Config(
-                    config_id=k,
-                    values=v,
-                )
+        priors = dict_to_configpriors(priors)
 
     optimizer_hyperparameters = optimizer_hyperparameters or {}
 
