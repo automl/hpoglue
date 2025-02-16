@@ -13,7 +13,7 @@ from hpoglue.measure import Measure
 from hpoglue.optimizer import Optimizer
 from hpoglue.query import Query
 from hpoglue.result import Result
-from hpoglue.utils import first, first_n, mix_n
+from hpoglue.utils import configpriors_to_dict, dict_to_configpriors, first, first_n, mix_n
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
@@ -113,9 +113,9 @@ class Problem:
     continuations: bool = field(default=True)
     """Whether the problem supports continuations."""
 
-    priors: Mapping[str, Config] = field(default_factory=dict)
+    priors: tuple[str, Mapping[str, Config]] = field(default_factory=dict)
     """Priors to use for the problem's objectives.
-        Format: {objective_name: prior Config}
+        Format: (unique_prior_id, {objective_name: prior Config})
     """
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912, PLR0915
@@ -161,7 +161,10 @@ class Problem:
 
         name_parts.append(self.budget.path_str)
 
-        # TODO: Add priors to name_parts
+        if self.priors:
+            name_parts.append(
+                f"priors={self.priors[0]}"
+            )
 
         self.is_multiobjective: bool
         match self.objectives:
@@ -222,7 +225,7 @@ class Problem:
         multi_objective_generation: Literal["mix_metric_cost", "metric_only"] = "mix_metric_cost",
         precision: int | None = None,
         continuations: bool = True,
-        priors: Mapping[str, Any] = {},
+        priors: tuple[str, Mapping[str, Config] | Mapping[str, dict[str, Any]]] | None = None,
     ) -> Problem:
         """Generate a problem for this optimizer and benchmark.
 
@@ -424,6 +427,14 @@ class Problem:
 
         _opt = optimizer[0] if isinstance(optimizer, tuple) else optimizer
 
+        match priors:
+            case None:
+                pass
+            case tuple():
+                priors = dict_to_configpriors(priors)
+            case _:
+                raise TypeError(f"Unexpected type for priors: {type(priors)}")
+
         if "single" not in _opt.support.fidelities:
             continuations = False
 
@@ -540,7 +551,7 @@ class Problem:
             "optimizer": self.optimizer.name,
             "optimizer_hyperparameters": self.optimizer_hyperparameters,
             "continuations": self.continuations,
-            "priors": False or self.priors,
+            "priors": configpriors_to_dict(self.priors) if self.priors else None,
         }
 
     @classmethod
@@ -626,9 +637,10 @@ class Problem:
             costs=costs,
             budget=budget,
             benchmark=benchmark,
-            optimizer=optimizer.__class__,
+            optimizer=optimizer,
             optimizer_hyperparameters=data["optimizer_hyperparameters"],
             continuations=data["continuations"],
+            priors = dict_to_configpriors(data["priors"]) if data.get("priors") else None,
         )
 
     @dataclass(kw_only=True)
@@ -728,4 +740,4 @@ class Problem:
                     f"Optimizer {who} does not support priors",
                     stacklevel=2,
                 )
-                problem.priors = {}
+                problem.priors = None
