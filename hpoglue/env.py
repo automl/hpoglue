@@ -49,8 +49,18 @@ class Env:
                 )
         match self.post_install:
             case tuple():
-                pass
+                _cmd = []
+                for command in self.post_install:
+                    command = command.replace("python", "").replace("-m", "").strip()  # noqa: PLW2901
+                    if command:
+                        _cmd.append(command)
+                self.post_install = tuple(_cmd)
             case str():
+                self.post_install = (
+                    self.post_install.replace("python", "")
+                    .replace("-m", "")
+                    .strip()
+                )
                 self.post_install = (self.post_install,)
             case None:
                 self.post_install = ()
@@ -205,6 +215,6 @@ class Venv:
 
     def run(self, cmd: Sequence[str]) -> None:
         """Run the given command in the virtual environment."""
-        cmd = ["source", self.activate, "&&", *cmd]
+        cmd = [self.python, "-m", *cmd]
         logger.debug(cmd)
         subprocess.run(cmd, check=True)  # noqa: S603
