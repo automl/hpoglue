@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hpoglue.utils import env_pkg_version_compat
+
 logger = logging.getLogger(__name__)
 
 WHEN_MODULE_INITIALIZED = datetime.now().isoformat()
@@ -104,6 +106,14 @@ class Env:
             python_version = ".".join(map(str, resolved))
         else:
             python_version = one.python_version
+
+        for package in one.requirements:
+            for other_package in two.requirements:
+                if not env_pkg_version_compat(package, other_package):
+                    raise ValueError(
+                        f"Package versions are not compatible: {package}, {other_package}"
+                    )
+
 
         if one.name == two.name:
             return Env(

@@ -7,8 +7,10 @@ from typing import Any, TypeAlias, TypeVar
 import numpy as np
 import pandas as pd
 from more_itertools import roundrobin, take
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 
-from hpoglue import Config
+from hpoglue.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -215,3 +217,48 @@ def dict_to_configpriors(
                 raise TypeError(f"Unsupported type for priors: {type(prior)}")
 
     return name, prior_dict
+
+
+def env_pkg_version_compat(
+    package1: str,
+    package2: str,
+):
+    """Check if two package versions are compatible.
+
+    Args:
+        package1: The first package version.
+        package2: The second package version.
+
+    Returns:
+        bool: True if the package versions are compatible, False otherwise.
+    """
+    name1, key1, spec1 = _split_pkg_ver(package1)
+    name2, key2, spec2 = _split_pkg_ver(package2)
+
+    if name1 != name2:
+        return True
+
+    if not spec1 or not spec2:
+        return True
+
+    key_spec1, key_spec2 = SpecifierSet(key1 + spec1), SpecifierSet(key2 + spec2)
+
+    return bool(key_spec1.contains(Version(spec2)) or key_spec2.contains(Version(spec1)))
+
+
+def _split_pkg_ver(package_name: str) -> tuple[str, str, str]:
+    """Split package name into name, operator, and version.
+
+    Args:
+        package_name: The package name to split.
+
+    Returns:
+        tuple: A tuple containing the package name and specifier set.
+    """
+    version_constraints = ["==", ">=", "<=", ">", "<"]
+    for constraint in version_constraints:
+        if constraint in package_name:
+            package_name, version_spec = package_name.split(constraint)
+            return package_name, constraint, version_spec
+
+    return package_name, "", ""
