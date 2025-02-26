@@ -166,6 +166,8 @@ class Problem:
                 f"priors={self.priors[0]}"
             )
 
+        self.name = ".".join(name_parts)
+
         self.is_multiobjective: bool
         match self.objectives:
             case tuple():
@@ -208,8 +210,6 @@ class Problem:
             case Mapping():
                 if len(self.costs) == 1:
                     raise ValueError("Single cost should be a tuple, not a mapping")
-
-        self.name = ".".join(name_parts)
 
     @classmethod
     def problem(  # noqa: C901, PLR0912, PLR0913, PLR0915
@@ -741,3 +741,4 @@ class Problem:
                     stacklevel=2,
                 )
                 problem.priors = None
+                problem.name = problem.name.split("priors=")[0]
