@@ -141,7 +141,7 @@ class Problem:
                 1, ",".join(f"{k}={v}" for k, v in self.optimizer_hyperparameters.items())
             )
 
-        if self.fidelities is not None and len(self.benchmark.fidelities) > 1:
+        if self.fidelities is not None:
             name_parts.append(
                 "fidelities=" + (
                     ",".join(self.get_fidelities())
