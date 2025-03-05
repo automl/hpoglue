@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from hpoglue.budget import CostBudget, TrialBudget
 from hpoglue.config import PRECISION, Config
-from hpoglue.fidelity import Fidelity, ListFidelity, RangeFidelity
+from hpoglue.fidelity import ContinuousFidelity, Fidelity, ListFidelity, RangeFidelity
 from hpoglue.measure import Measure
 from hpoglue.optimizer import Optimizer
 from hpoglue.query import Query
@@ -39,6 +39,7 @@ class Problem:
     CostBudget: TypeAlias = CostBudget
     RangeFidelity: TypeAlias = RangeFidelity
     ListFidelity: TypeAlias = ListFidelity
+    ContinuousFidelity: TypeAlias = ContinuousFidelity
 
     objectives: tuple[str, Measure] | Mapping[str, Measure] = field(hash=False)
     """The metrics to optimize for this problem, with a specific order.

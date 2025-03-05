@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Iterator, Sequence, Sized
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Generic, Protocol, TypeVar, runtime_checkable
 from typing_extensions import Self
 
@@ -238,7 +239,7 @@ class ContinuousFidelity(Fidelity, Generic[T]):
     """A class to represent a continuous fidelity range with a minimum and maximum value.
 
     Attributes:
-        kind: The type of the fidelity values (int or float).
+        kind: The type of the fidelity values (always float for ContinuousFidelity).
 
         min: The minimum value of the fidelity range.
 
@@ -247,19 +248,35 @@ class ContinuousFidelity(Fidelity, Generic[T]):
         supports_continuation: A boolean flag indicating if continuation is supported.
     """
 
-    kind: type[T]
+    kind: type[T] = field(default=float, init=False)
     min: T
     max: T
+    precision: T
     supports_continuation: bool
 
     def __post_init__(self):
         if self.min >= self.max:
             raise ValueError(f"min must be less than max, got {self.min} and {self.max}")
+        assert isinstance(
+            self.min, float
+        ), f"min must be of type float for ContinuousFidelity. Got {type(self.min)}"
+        assert isinstance(self.max, float), (
+            f"max must be of type float for ContinuousFidelity. Got {type(self.max)}"
+        )
+        assert isinstance(self.precision, float), (
+            f"precision must be of type float for ContinuousFidelity. Got {type(self.precision)}"
+        )
+        assert self.min <= self.precision < self.max, (
+            f"precision must be between min and max. "
+            f"Got min={self.min}, precision={self.precision}, max={self.max}"
+        )
+
 
     @classmethod
     def from_tuple(
         cls,
         values: tuple[T, T],
+        precision: float | None = None,
         *,
         supports_continuation: bool = False,
     ) -> ContinuousFidelity[T]:
@@ -267,6 +284,8 @@ class ContinuousFidelity(Fidelity, Generic[T]):
 
         Args:
             values: A tuple containing two values of type int or float.
+
+            precision: The decimal precision at which the fidelity values are queried.
 
             supports_continuation: A flag indicating if continuation is supported.
                 Defaults to False.
@@ -278,19 +297,29 @@ class ContinuousFidelity(Fidelity, Generic[T]):
             ValueError: If the values are not of type int or float,
                 or if the values are not of the same type.
         """
-        _type = type(values[0])
-        if _type not in (int, float):
-            raise ValueError(f"all values must be of type int or float, got {_type}")
-
         if len(values) != 2:  # noqa: PLR2004
             raise ValueError(f"expected 2 values, got {len(values)}")
 
-        if not all(isinstance(v, _type) for v in values):
-            raise ValueError(f"all values must be of type {_type}, got {values}")
+        _values = []
+        for val in values:
+            if type(val) not in (int, float):
+                raise ValueError(f"all values must be of type int or float, got {type(val)}")
+            _values.append(float(val))
+        _values = tuple(_values)
+
+        if precision is None:
+            precision = 1e-6
+
+        if _values[0] == 0.0:
+            warnings.warn(  # noqa: B028
+                "Continuous fidelity with min value 0.0 is not allowed. Using `precision` instead."
+            )
+            _values = (1e-6, _values[1])
+
 
         return cls(
-            kind=_type,
-            min=values[0],
-            max=values[1],
+            min=_values[0],
+            max=_values[1],
+            precision=precision,
             supports_continuation=supports_continuation,
         )

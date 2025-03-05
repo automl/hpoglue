@@ -148,6 +148,6 @@ def run_glue(  # noqa: C901, PLR0912
     return _df.assign(
         benchmark=problem.benchmark.name,
         objectives=_objectives,
-        fidelities=fidelities,
-        costs=costs,
+        fidelities=_fidelities,
+        costs=_costs,
     )
