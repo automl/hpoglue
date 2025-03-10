@@ -274,6 +274,8 @@ class TabularBenchmark:
                 " Please drop it or rename it.",
             )
 
+        table[id_key] = table[id_key].astype(str)   # enforcing str for id
+
         # Remap their id column to `id`
         table = table.rename(columns={id_key: "id"})
 
@@ -364,7 +366,7 @@ class TabularBenchmark:
 
         match query.fidelity:
             case None:
-                fidelities_retrieved = unspecified_fids
+                fidelities_retrieved = unspecified_fids or None
             case (key, value):
                 fidelities_retrieved = {**unspecified_fids, key: value}
             case Mapping():
