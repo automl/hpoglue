@@ -266,9 +266,9 @@ class ContinuousFidelity(Fidelity, Generic[T]):
         assert isinstance(self.precision, float), (
             f"precision must be of type float for ContinuousFidelity. Got {type(self.precision)}"
         )
-        assert self.min <= self.precision < self.max, (
-            f"precision must be between min and max. "
-            f"Got min={self.min}, precision={self.precision}, max={self.max}"
+        assert self.precision < self.max, (
+            f"precision must be less than max. "
+            f"Got precision={self.precision} and max={self.max}"
         )
 
 
@@ -308,13 +308,13 @@ class ContinuousFidelity(Fidelity, Generic[T]):
         _values = tuple(_values)
 
         if precision is None:
-            precision = 1e-6
+            precision = 1e-2
 
         if _values[0] == 0.0:
             warnings.warn(  # noqa: B028
                 "Continuous fidelity with min value 0.0 is not allowed. Using `precision` instead."
             )
-            _values = (1e-6, _values[1])
+            _values = (precision, _values[1])
 
 
         return cls(
