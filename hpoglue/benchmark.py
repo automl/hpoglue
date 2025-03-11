@@ -66,7 +66,7 @@ class BenchmarkDescription:
     is_tabular: bool = False
     """Whether the benchmark is tabular."""
 
-    env: Env = field(default_factory=Env.empty())
+    env: Env = field(default_factory=Env.empty)
     """The environment needed to run this benchmark."""
 
     mem_req_mb: int = 1024
@@ -366,9 +366,9 @@ class TabularBenchmark:
 
         match query.fidelity:
             case None:
-                fidelities_retrieved = unspecified_fids or None
+                fidelities_retrieved = None
             case (key, value):
-                fidelities_retrieved = {**unspecified_fids, key: value}
+                fidelities_retrieved = (key, value)
             case Mapping():
                 fidelities_retrieved = {**unspecified_fids, **query.fidelity}
 
@@ -499,7 +499,7 @@ class FunctionalBenchmark:
             fidelities=fidelities,
             has_conditionals=False,
             is_tabular=False,
-            env=env or Env.empty(),
+            env=env,
             mem_req_mb=mem_req_mb,
             predefined_points=predefined_points,
             extra=extra,
