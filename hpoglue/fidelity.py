@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-import warnings
+import logging
 from collections.abc import Iterator, Sequence, Sized
 from dataclasses import dataclass, field
 from typing import Generic, Protocol, TypeVar, runtime_checkable
 from typing_extensions import Self
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=int | float)
 
@@ -311,8 +313,11 @@ class ContinuousFidelity(Fidelity, Generic[T]):
             precision = 1e-2
 
         if _values[0] == 0.0:
-            warnings.warn(  # noqa: B028
-                "Continuous fidelity with min value 0.0 is not allowed. Using `precision` instead."
+            logger.error(
+                "WARNING: Continuous fidelity with min value 0.0 is not allowed. "
+                f"Using `{precision=}` as `min` instead."
+                "Change the min value in the benchmark fidelity to a non-zero value "
+                "to avoid defaulting to `precision`."
             )
             _values = (precision, _values[1])
 
