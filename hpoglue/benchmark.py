@@ -304,15 +304,26 @@ class TabularBenchmark:
         self.config_keys = config_keys
         self.result_keys = result_keys
         self.fidelity_keys = fidelity_keys
-        self.config_space = [
+        self.config_space = self.get_tabular_config_space(table, config_keys)
+
+
+    @classmethod
+    def get_tabular_config_space(
+        cls,
+        table: pd.DataFrame,
+        config_keys: list[str],
+    ) -> list[Config]:
+        """Get the configuration space from the table."""
+        return [
             Config(config_id=str(i), values=config)  # enforcing str for id
             for i, config in enumerate(
-                self.table[config_keys]
+                table[config_keys]
                 .drop_duplicates()
                 .sort_values(by=config_keys)  # Sorting to ensure table config order is consistent
                 .to_dict(orient="records"),
             )
         ]
+
 
     def query(self, query: Query) -> Result:
         """Query the benchmark for a result."""
