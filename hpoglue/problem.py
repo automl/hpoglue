@@ -742,4 +742,4 @@ class Problem:
                     stacklevel=2,
                 )
                 problem.priors = None
-                problem.name = problem.name.split("priors=")[0]
+                problem.name = problem.name.split(".priors=")[0]
