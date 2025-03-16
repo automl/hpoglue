@@ -1,8 +1,9 @@
 [project]
 name = "hpoglue"
-version = "0.2.2"
+version = "0.2.3"
 requires-python = ">=3.10"
 dependencies = [
+  "numpy",
   "pandas>=2,<3",
   "tqdm", 
   "more_itertools",
