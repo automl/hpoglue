@@ -382,7 +382,16 @@ class Problem:
                             )
                     _obj = {name: benchmark.metrics[name] for name in objectives}  # type: ignore
                 else:
-                    _obj = mix_n(len(objectives), benchmark.metrics, benchmark.costs)  # type: ignore
+                    _obj = {}
+                    for obj in objectives:  # type: ignore
+                        if obj in benchmark.metrics:
+                            _obj[obj] = benchmark.metrics[obj]
+                        elif obj in benchmark.costs:
+                            _obj[obj] = benchmark.costs[obj]
+                        else:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics or costs",
+                            )
             case _, _:
                 raise RuntimeError(
                     f"Unexpected case with {objectives=}, {multi_objective_generation=}",
@@ -588,12 +597,37 @@ class Problem:
 
         benchmark = benchmarks_dict[data["benchmark"]]
         optimizer = optimizers_dict[data["optimizer"]]
-        _obj = data["objectives"]
-        match _obj:
+        objectives = data["objectives"]
+        match objectives:
             case str():
-                objectives = (_obj, benchmark.metrics[_obj])
+                _obj = (objectives, benchmark.metrics[objectives])
             case list():
-                objectives = {name: benchmark.metrics[name] for name in _obj}
+                n_costs = 0 if benchmark.costs is None else len(benchmark.costs)
+                n_available = len(benchmark.metrics) + n_costs
+                if len(objectives) > n_available:  # type: ignore
+                    raise ValueError(
+                        f"{objectives=} is greater than the number of metrics and costs"
+                        f" in benchmark {benchmark.name} which has {n_available} objectives"
+                        " when combining metrics and costs",
+                    )
+                if benchmark.costs is None:
+                    for obj in objectives:  # type: ignore
+                        if obj not in benchmark.metrics:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics",
+                            )
+                    _obj = {name: benchmark.metrics[name] for name in objectives}  # type: ignore
+                else:
+                    _obj = {}
+                    for obj in objectives:  # type: ignore
+                        if obj in benchmark.metrics:
+                            _obj[obj] = benchmark.metrics[obj]
+                        elif obj in benchmark.costs:
+                            _obj[obj] = benchmark.costs[obj]
+                        else:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics or costs",
+                            )
             case _:
                 raise ValueError("Objectives must be a string or a list of strings")
 
@@ -633,7 +667,7 @@ class Problem:
                 raise ValueError("Budget type must be 'trial_budget' or 'cost_budget'")
 
         return cls(
-            objectives=objectives,
+            objectives=_obj,
             fidelities=fidelities,
             costs=costs,
             budget=budget,
