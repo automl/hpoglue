@@ -136,6 +136,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
     progress_bar: bool,
 ) -> list[Result]:
     used_budget: float = 0.0
+    continuations_used_budget: float = 0.0
 
     history: list[Result] = []
 
@@ -197,8 +198,30 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                                 f" but got: {query.fidelity}"
                             )
 
+                    match result.fidelity:
+                        case None:
+                            _fid_value = None
+                        case (name, v):
+                            if problem.continuations:
+                                _fid_value = (name, result.continuations_cost)
+                            else:
+                                _fid_value = (name, v)
+                        case Mapping():
+                            _fid_value = result.fidelity
+                        case _:
+                            raise TypeError(
+                                "Fidelity must be None, tuple or Mapping. "
+                                f"GOT: {type(result.fidelity)}"
+                            )
+
                     budget_cost = _trial_budget_cost(
                         value=result.fidelity,
+                        problem=problem,
+                        minimum_normalized_fidelity=minimum_normalized_fidelity,
+                    )
+
+                    continuations_budget_cost = _trial_budget_cost(
+                        value=_fid_value,
                         problem=problem,
                         minimum_normalized_fidelity=minimum_normalized_fidelity,
                     )
@@ -206,6 +229,10 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                     used_budget += budget_cost
                     result.budget_cost = budget_cost
                     result.budget_used_total = used_budget
+
+                    continuations_used_budget += continuations_budget_cost
+                    result.continuations_budget_cost = continuations_budget_cost
+                    result.continuations_budget_used_total = continuations_used_budget
 
                     optimizer.tell(result)
                     history.append(result)
