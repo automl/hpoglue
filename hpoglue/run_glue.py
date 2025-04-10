@@ -11,17 +11,19 @@ from hpoglue.utils import dict_to_configpriors
 
 if TYPE_CHECKING:
     from hpoglue.benchmark import BenchmarkDescription
+    from hpoglue.budget import BudgetType
     from hpoglue.optimizer import Optimizer
 
 
-def run_glue(  # noqa: C901, PLR0912
+def run_glue(  # noqa: C901, PLR0912, PLR0913
     optimizer: type[Optimizer],
     benchmark: BenchmarkDescription | FunctionalBenchmark,
     objectives: int | str | list[str] = 1,
     fidelities: int | str | list[str] | None = None,
+    minimum_normalized_fidelity_value: float | None = None,
     optimizer_hyperparameters: Mapping[str, int | float] | None = None,
     run_name: str | None = None,
-    budget: int | float = 50,
+    budget: BudgetType| int | float = 50,
     seed: int = 0,
     *,
     continuations: bool = True,
@@ -37,6 +39,9 @@ def run_glue(  # noqa: C901, PLR0912
             Defaults to 1, the first objective in the benchmark.
 
         fidelities: The fidelities for the benchmark.
+
+        minimum_normalized_fidelity_value: The minimum normalized fidelity value.
+            This is used to calculate the budget for Multi-fidelity Optimizers.
 
         optimizer_hyperparameters: Hyperparameters for the optimizer.
 
@@ -91,6 +96,7 @@ def run_glue(  # noqa: C901, PLR0912
         benchmark=benchmark,
         objectives=objectives,
         fidelities=fidelities,
+        minimum_normalized_fidelity_value=minimum_normalized_fidelity_value,
         budget=budget,
         continuations=continuations,
         priors=priors,

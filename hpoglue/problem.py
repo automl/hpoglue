@@ -220,6 +220,7 @@ class Problem:
         optimizer_hyperparameters: Mapping[str, int | float] = {},
         benchmark: BenchmarkDescription,
         budget: BudgetType | int | float,
+        minimum_normalized_fidelity_value: float | None = None,
         fidelities: int | str | list[str] | None = None,
         objectives: int | str | list[str] = 1,
         costs: int = 0,
@@ -241,6 +242,12 @@ class Problem:
                 where when multifidelty is enabled, fractional budget can be used and 1 is
                 equivalent a full fidelity trial.
 
+            minimum_normalized_fidelity_value: The minimum normalized fidelity value to use for
+                the problem. This is used to calculate the budget for Multi-Fidelity Optimizers.
+                By default, this is calculated as minimum fidelity / maximum fidelity of the
+                benchmark's fidelity space.
+                If the benchmark has no fidelities, this is ignored.
+
             fidelities: The actual fidelities or number of fidelities for the problem.
 
             objectives: The actual objectives or number of objectives for the problem.
@@ -255,6 +262,7 @@ class Problem:
 
             priors: Priors to use for the problem's objectives.
         """
+        _minimum_normalized_fid = None
         _fid: tuple[str, Fidelity] | Mapping[str, Fidelity] | None
         match fidelities:
             case int() if fidelities < 0:
@@ -272,6 +280,7 @@ class Problem:
                         ),
                     )
                 _fid = first(benchmark.fidelities)
+                _minimum_normalized_fid = float(_fid[1].min / _fid[1].max)
             case int():
                 if benchmark.fidelities is None:
                     raise ValueError(
@@ -289,6 +298,7 @@ class Problem:
                     )
 
                 _fid = first_n(fidelities, benchmark.fidelities)
+                _minimum_normalized_fid = minimum_normalized_fidelity_value
             case str():
                 if benchmark.fidelities is None:
                     raise ValueError(
@@ -302,6 +312,7 @@ class Problem:
                         f"{fidelities=} not found in benchmark {benchmark.name} fidelities",
                     )
                 _fid = (fidelities, benchmark.fidelities[fidelities])
+                _minimum_normalized_fid = float(_fid[1].min / _fid[1].max)
             case list():
                 if benchmark.fidelities is None:
                     raise ValueError(
@@ -317,6 +328,7 @@ class Problem:
                         f"{len(benchmark.fidelities)} fidelities",
                     )
                 _fid = {name: benchmark.fidelities[name] for name in fidelities}
+                _minimum_normalized_fid = minimum_normalized_fidelity_value
             case _:
                 raise TypeError(f"{fidelities=} not supported")
 
@@ -425,7 +437,10 @@ class Problem:
             case int() if budget < 0:
                 raise ValueError(f"{budget=} must be >= 0")
             case int():
-                _budget = TrialBudget(budget)
+                _minimum_normalized_fid = (
+                    minimum_normalized_fidelity_value or _minimum_normalized_fid or 0.01
+                )
+                _budget = TrialBudget(budget, _minimum_normalized_fid)
             case float():
                 _budget = CostBudget(budget)
             case TrialBudget():
