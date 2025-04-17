@@ -136,6 +136,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
     progress_bar: bool,
 ) -> list[Result]:
     used_budget: float = 0.0
+    used_trial_budget: float = 0.0
     continuations_used_budget: float = 0.0
 
     history: list[Result] = []
@@ -220,19 +221,30 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                         minimum_normalized_fidelity=minimum_normalized_fidelity,
                     )
 
-                    continuations_budget_cost = _trial_budget_cost(
-                        value=_fid_value,
-                        problem=problem,
-                        minimum_normalized_fidelity=minimum_normalized_fidelity,
-                    )
+                    if problem.continuations:
 
-                    used_budget += budget_cost
+                        continuations_budget_cost = _trial_budget_cost(
+                            value=_fid_value,
+                            problem=problem,
+                            minimum_normalized_fidelity=minimum_normalized_fidelity,
+                        )
+
+                        continuations_used_budget += continuations_budget_cost
+                        result.continuations_budget_cost = continuations_budget_cost
+                        result.continuations_budget_used_total = continuations_used_budget
+
+                    used_trial_budget += budget_cost
                     result.budget_cost = budget_cost
-                    result.budget_used_total = used_budget
+                    result.budget_used_total = used_trial_budget
 
-                    continuations_used_budget += continuations_budget_cost
-                    result.continuations_budget_cost = continuations_budget_cost
-                    result.continuations_budget_used_total = continuations_used_budget
+                    if problem.use_continuations_as_budget:
+                        used_budget = continuations_used_budget
+                    else:
+                        used_budget = used_trial_budget
+
+                    # For Fidelity budgets (fractional TrialBudget cost)
+                    if used_budget > budget_total:
+                        break
 
                     optimizer.tell(result)
                     history.append(result)

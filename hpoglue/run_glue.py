@@ -27,6 +27,7 @@ def run_glue(  # noqa: C901, PLR0912, PLR0913
     seed: int = 0,
     *,
     continuations: bool = True,
+    use_continuations_as_budget: bool = False,
     priors: tuple[str, Mapping[str, Config | Mapping[str, Any]]] | None = None,
 ) -> pd.DataFrame:
     """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
@@ -52,6 +53,9 @@ def run_glue(  # noqa: C901, PLR0912, PLR0913
         seed: The seed for random number generation to ensure reproducibility.
 
         continuations: Whether to use continuations for the run.
+
+        use_continuations_as_budget: Whether to use continuations as budget.
+            This is only applicable for Multi-fidelity Optimizers.
 
         priors: Priors to use for the run.
 
@@ -100,6 +104,7 @@ def run_glue(  # noqa: C901, PLR0912, PLR0913
         budget=budget,
         continuations=continuations,
         priors=priors,
+        use_continuations_as_budget=use_continuations_as_budget,
     )
 
     history = _run(
