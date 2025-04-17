@@ -119,9 +119,6 @@ class Problem:
         Format: (unique_prior_id, {objective_name: prior Config})
     """
 
-    use_continuations_as_budget: bool = field(default=False)
-    """Whether to use continuations as the budget for the problem."""
-
     def __post_init__(self) -> None:  # noqa: C901, PLR0912, PLR0915
         self.config_space = self.benchmark.config_space
         self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
@@ -224,7 +221,6 @@ class Problem:
         benchmark: BenchmarkDescription,
         budget: BudgetType | int | float,
         minimum_normalized_fidelity_value: float | None = None,
-        use_continuations_as_budget: bool = False,
         fidelities: int | str | list[str] | None = None,
         objectives: int | str | list[str] = 1,
         costs: int = 0,
@@ -251,9 +247,6 @@ class Problem:
                 By default, this is calculated as minimum fidelity / maximum fidelity of the
                 benchmark's fidelity space.
                 If the benchmark has no fidelities, this is ignored.
-
-            use_continuations_as_budget: Whether to use continuations as the budget for the
-                problem. This is only available for Multi-Fidelity Optimizers.
 
             fidelities: The actual fidelities or number of fidelities for the problem.
 
@@ -470,14 +463,6 @@ class Problem:
         if "single" not in _opt.support.fidelities:
             continuations = False
 
-        if use_continuations_as_budget and not continuations:
-                warnings.warn(
-                    f"Optimizer {optimizer.name} does not support continuations. "
-                    "\nCannot use continuations cost as budget",
-                    stacklevel=2,
-                )
-                use_continuations_as_budget = False
-
         problem = Problem(
             optimizer=optimizer,
             optimizer_hyperparameters=optimizer_hyperparameters,
@@ -489,7 +474,6 @@ class Problem:
             precision=precision if precision is not None else PRECISION,
             continuations=continuations,
             priors=priors,
-            use_continuations_as_budget=use_continuations_as_budget,
         )
 
         support: Problem.Support = _opt.support

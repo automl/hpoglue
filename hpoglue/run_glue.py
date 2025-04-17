@@ -104,13 +104,13 @@ def run_glue(  # noqa: C901, PLR0912, PLR0913
         budget=budget,
         continuations=continuations,
         priors=priors,
-        use_continuations_as_budget=use_continuations_as_budget,
     )
 
     history = _run(
         run_name=run_name,
         problem=problem,
         seed=seed,
+        use_continuations_as_budget=use_continuations_as_budget,
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
     fidelities = problem.get_fidelities()

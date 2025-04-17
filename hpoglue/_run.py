@@ -90,6 +90,7 @@ def _run(
     run_name: str | None = None,
     on_error: Literal["raise", "continue"] = "raise",
     progress_bar: bool = False,
+    use_continuations_as_budget: bool = False,
 ) -> list[Result]:
     run_name = run_name if run_name is not None else problem.name
     benchmark = problem.benchmark.load(problem.benchmark)
@@ -99,6 +100,14 @@ def _run(
         seed=seed,
         **problem.optimizer_hyperparameters,
     )
+
+    if use_continuations_as_budget and not problem.continuations:
+        warnings.warn(
+            f"Optimizer {problem.optimizer.name} does not support continuations."
+            "\nSetting use_continuations_as_budget to False.",
+            stacklevel=2,
+        )
+        use_continuations_as_budget = False
 
     match problem.budget:
         case TrialBudget(
@@ -114,6 +123,7 @@ def _run(
                 on_error=on_error,
                 minimum_normalized_fidelity=minimum_normalized_fidelity,
                 progress_bar=progress_bar,
+                use_continuations_as_budget=use_continuations_as_budget,
             )
         case CostBudget():
             raise NotImplementedError("CostBudget not yet implemented")
@@ -134,6 +144,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
     on_error: Literal["raise", "continue"],
     minimum_normalized_fidelity: float,
     progress_bar: bool,
+    use_continuations_as_budget: bool,
 ) -> list[Result]:
     used_budget: float = 0.0
     used_trial_budget: float = 0.0
@@ -237,7 +248,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                     result.budget_cost = budget_cost
                     result.budget_used_total = used_trial_budget
 
-                    if problem.use_continuations_as_budget:
+                    if use_continuations_as_budget:
                         used_budget = continuations_used_budget
                     else:
                         used_budget = used_trial_budget
