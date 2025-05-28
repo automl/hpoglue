@@ -173,37 +173,40 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                         case Mapping():
                             raise NotImplementedError("Manyfidelity not yet implemented")
                         case (fid_name, fid_value):
-                            config = Conf(query.config.to_tuple(problem.precision), fid_value)
-                            exist_already = runhist.add_conf(config=config, fid_name=fid_name)
-
-                            if exist_already:
-                                # NOTE: Not a cheap operation since we don't store the costs
-                                # in the continuations dict
-                                result = None
-                                for existing_result in history:
-                                    tup = existing_result.config.to_tuple(problem.precision)
-                                    if Conf(tup, fid_value) == config:
-                                        if query.config_id == existing_result.query.config_id:
-                                            raise ValueError(
-                                                "Resampled configuration has same config_id"
-                                                " in history!"
-                                            )
-                                        existing_result.query = query
-                                        result = existing_result
-                                        break
-
-                                if result is None:
-                                    raise ValueError(
-                                        "Resampled configuration not found in history!"
-                                    )
-
-                            else:
+                            if not problem.continuations:
                                 result = benchmark.query(query)
-                                if problem.continuations:
-                                    result.continuations_cost = runhist.get_continuations_cost(
-                                        config=config,
-                                        fid_name=fid_name,
-                                    )
+                            else:
+                                config = Conf(query.config.to_tuple(problem.precision), fid_value)
+                                exist_already = runhist.add_conf(config=config, fid_name=fid_name)
+
+                                if exist_already:
+                                    # NOTE: Not a cheap operation since we don't store the costs
+                                    # in the continuations dict
+                                    result = None
+                                    for existing_result in history:
+                                        tup = existing_result.config.to_tuple(problem.precision)
+                                        if Conf(tup, fid_value) == config:
+                                            if query.config_id == existing_result.query.config_id:
+                                                raise ValueError(
+                                                    "Resampled configuration has same config_id"
+                                                    " in history!"
+                                                )
+                                            existing_result.query = query
+                                            result = existing_result
+                                            break
+
+                                    if result is None:
+                                        raise ValueError(
+                                            "Resampled configuration not found in history!"
+                                        )
+
+                                else:
+                                    result = benchmark.query(query)
+                                    if problem.continuations:
+                                        result.continuations_cost = runhist.get_continuations_cost(
+                                            config=config,
+                                            fid_name=fid_name,
+                                        )
                         case _:
                             raise TypeError(
                                 "Fidelity must be None, tuple(str, value), or Mapping[str, fid]"
@@ -248,7 +251,7 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                     result.budget_cost = budget_cost
                     result.budget_used_total = used_trial_budget
 
-                    if use_continuations_as_budget:
+                    if use_continuations_as_budget and problem.continuations:
                         used_budget = continuations_used_budget
                     else:
                         used_budget = used_trial_budget
