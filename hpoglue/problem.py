@@ -460,9 +460,6 @@ class Problem:
             case _:
                 raise TypeError(f"Unexpected type for priors: {type(priors)}")
 
-        if "single" not in _opt.support.fidelities:
-            continuations = False
-
         problem = Problem(
             optimizer=optimizer,
             optimizer_hyperparameters=optimizer_hyperparameters,
@@ -580,7 +577,7 @@ class Problem:
         }
 
     @classmethod
-    def from_dict(  # noqa: C901, PLR0912
+    def from_dict(  # noqa: C901, PLR0912, PLR0915
         cls,
         data: dict[str, Any],
         benchmarks_dict: Mapping[str, BenchmarkDescription],
@@ -702,6 +699,7 @@ class Problem:
         cost_awareness: tuple[Literal[None, "single", "many"], ...] = field(default=(None,))
         tabular: bool = False
         priors: bool = False
+        continuations: bool = False
 
         def __post_init__(self) -> None:
             match self.objectives:
@@ -739,7 +737,7 @@ class Problem:
                         f"{type(self.cost_awareness)}, expected tuple!"
                     )
 
-        def check_opt_support(self, who: str, *, problem: Problem) -> None:  # noqa: C901
+        def check_opt_support(self, who: str, *, problem: Problem) -> None:  # noqa: C901, PLR0912
             """Check if the problem is supported by the support."""
             match problem.fidelities:
                 case None if None not in self.fidelities:
@@ -792,3 +790,14 @@ class Problem:
                 )
                 problem.priors = None
                 problem.name = problem.name.split(".priors=")[0]
+
+            match problem.continuations:
+                case False:
+                    pass
+                case True:
+                    if not self.continuations or "single" not in self.fidelities:
+                        warnings.warn(
+                            f"Optimizer {who} does not support continuations for {problem.name}",
+                            stacklevel=2,
+                        )
+                        problem.continuations = False
