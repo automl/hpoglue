@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from hpoglue.budget import CostBudget, TrialBudget
 from hpoglue.config import PRECISION, Config
-from hpoglue.fidelity import Fidelity, ListFidelity, RangeFidelity
+from hpoglue.fidelity import ContinuousFidelity, Fidelity, ListFidelity, RangeFidelity
 from hpoglue.measure import Measure
 from hpoglue.optimizer import Optimizer
 from hpoglue.query import Query
 from hpoglue.result import Result
-from hpoglue.utils import first, first_n, mix_n
+from hpoglue.utils import configpriors_to_dict, dict_to_configpriors, first, first_n, mix_n
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
@@ -39,6 +39,7 @@ class Problem:
     CostBudget: TypeAlias = CostBudget
     RangeFidelity: TypeAlias = RangeFidelity
     ListFidelity: TypeAlias = ListFidelity
+    ContinuousFidelity: TypeAlias = ContinuousFidelity
 
     objectives: tuple[str, Measure] | Mapping[str, Measure] = field(hash=False)
     """The metrics to optimize for this problem, with a specific order.
@@ -102,7 +103,7 @@ class Problem:
         This is used to identify the problem.
     """
 
-    precision: int = field(default=12)  # TODO: Set default
+    precision: int = field(default=12)
     """The precision to use for the problem."""
 
     mem_req_mb: int = field(init=False)
@@ -113,12 +114,12 @@ class Problem:
     continuations: bool = field(default=True)
     """Whether the problem supports continuations."""
 
-    priors: Mapping[str, Config] = field(default_factory=dict)
+    priors: tuple[str, Mapping[str, Config]] = field(default_factory=dict)
     """Priors to use for the problem's objectives.
-        Format: {objective_name: prior Config}
+        Format: (unique_prior_id, {objective_name: prior Config})
     """
 
-    def __post_init__(self) -> None:  # noqa: C901, PLR0912
+    def __post_init__(self) -> None:  # noqa: C901, PLR0912, PLR0915
         self.config_space = self.benchmark.config_space
         self.mem_req_mb = self.optimizer.mem_req_mb + self.benchmark.mem_req_mb
         self.is_tabular = self.benchmark.is_tabular
@@ -129,13 +130,44 @@ class Problem:
         name_parts: list[str] = [
             f"optimizer={self.optimizer.name}",
             f"benchmark={self.benchmark.name}",
-            self.budget.path_str,
+            "objectives=" + (
+                ",".join(self.get_objectives())
+                if isinstance(self.objectives, Mapping)
+                else self.get_objectives()
+            )
         ]
 
         if len(self.optimizer_hyperparameters) > 0:
             name_parts.insert(
                 1, ",".join(f"{k}={v}" for k, v in self.optimizer_hyperparameters.items())
             )
+
+        if self.fidelities is not None:
+            name_parts.append(
+                "fidelities=" + (
+                    ",".join(self.get_fidelities())
+                    if isinstance(self.fidelities, Mapping)
+                    else self.get_fidelities()
+                )
+            )
+
+        if self.costs is not None:
+            name_parts.append(
+                "costs=" + (
+                    ",".join(self.get_costs())
+                    if isinstance(self.costs, Mapping)
+                    else self.get_costs()
+                )
+            )
+
+        name_parts.append(self.budget.path_str)
+
+        if self.priors:
+            name_parts.append(
+                f"priors={self.priors[0]}"
+            )
+
+        self.name = ".".join(name_parts)
 
         self.is_multiobjective: bool
         match self.objectives:
@@ -146,7 +178,6 @@ class Problem:
                     raise ValueError("Single objective should be a tuple, not a mapping")
 
                 self.is_multiobjective = True
-                name_parts.append("objectives=" + ",".join(self.objectives.keys()))
             case _:
                 raise TypeError("Objectives must be a tuple (name, measure) or a mapping")
 
@@ -181,8 +212,6 @@ class Problem:
                 if len(self.costs) == 1:
                     raise ValueError("Single cost should be a tuple, not a mapping")
 
-        self.name = ".".join(name_parts)
-
     @classmethod
     def problem(  # noqa: C901, PLR0912, PLR0913, PLR0915
         cls,
@@ -191,13 +220,14 @@ class Problem:
         optimizer_hyperparameters: Mapping[str, int | float] = {},
         benchmark: BenchmarkDescription,
         budget: BudgetType | int | float,
+        minimum_normalized_fidelity_value: float | None = None,
         fidelities: int | str | list[str] | None = None,
         objectives: int | str | list[str] = 1,
         costs: int = 0,
         multi_objective_generation: Literal["mix_metric_cost", "metric_only"] = "mix_metric_cost",
         precision: int | None = None,
         continuations: bool = True,
-        priors: Mapping[str, Any] = {},
+        priors: tuple[str, Mapping[str, Config] | Mapping[str, dict[str, Any]]] | None = None,
     ) -> Problem:
         """Generate a problem for this optimizer and benchmark.
 
@@ -211,6 +241,12 @@ class Problem:
             budget: The budget to use for the problems. Budget defaults to a n_trials budget
                 where when multifidelty is enabled, fractional budget can be used and 1 is
                 equivalent a full fidelity trial.
+
+            minimum_normalized_fidelity_value: The minimum normalized fidelity value to use for
+                the problem. This is used to calculate the budget for Multi-Fidelity Optimizers.
+                By default, this is calculated as minimum fidelity / maximum fidelity of the
+                benchmark's fidelity space.
+                If the benchmark has no fidelities, this is ignored.
 
             fidelities: The actual fidelities or number of fidelities for the problem.
 
@@ -226,6 +262,7 @@ class Problem:
 
             priors: Priors to use for the problem's objectives.
         """
+        _minimum_normalized_fid = None
         _fid: tuple[str, Fidelity] | Mapping[str, Fidelity] | None
         match fidelities:
             case int() if fidelities < 0:
@@ -243,6 +280,7 @@ class Problem:
                         ),
                     )
                 _fid = first(benchmark.fidelities)
+                _minimum_normalized_fid = float(_fid[1].min / _fid[1].max)
             case int():
                 if benchmark.fidelities is None:
                     raise ValueError(
@@ -260,6 +298,7 @@ class Problem:
                     )
 
                 _fid = first_n(fidelities, benchmark.fidelities)
+                _minimum_normalized_fid = minimum_normalized_fidelity_value
             case str():
                 if benchmark.fidelities is None:
                     raise ValueError(
@@ -273,6 +312,7 @@ class Problem:
                         f"{fidelities=} not found in benchmark {benchmark.name} fidelities",
                     )
                 _fid = (fidelities, benchmark.fidelities[fidelities])
+                _minimum_normalized_fid = float(_fid[1].min / _fid[1].max)
             case list():
                 if benchmark.fidelities is None:
                     raise ValueError(
@@ -288,6 +328,7 @@ class Problem:
                         f"{len(benchmark.fidelities)} fidelities",
                     )
                 _fid = {name: benchmark.fidelities[name] for name in fidelities}
+                _minimum_normalized_fid = minimum_normalized_fidelity_value
             case _:
                 raise TypeError(f"{fidelities=} not supported")
 
@@ -353,7 +394,16 @@ class Problem:
                             )
                     _obj = {name: benchmark.metrics[name] for name in objectives}  # type: ignore
                 else:
-                    _obj = mix_n(len(objectives), benchmark.metrics, benchmark.costs)  # type: ignore
+                    _obj = {}
+                    for obj in objectives:  # type: ignore
+                        if obj in benchmark.metrics:
+                            _obj[obj] = benchmark.metrics[obj]
+                        elif obj in benchmark.costs:
+                            _obj[obj] = benchmark.costs[obj]
+                        else:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics or costs",
+                            )
             case _, _:
                 raise RuntimeError(
                     f"Unexpected case with {objectives=}, {multi_objective_generation=}",
@@ -364,6 +414,8 @@ class Problem:
             case int() if costs < 0:
                 raise ValueError(f"{costs=} must be >= 0")
             case 0:
+                _cost = None
+            case None:
                 _cost = None
             case 1:
                 if benchmark.costs is None:
@@ -385,7 +437,10 @@ class Problem:
             case int() if budget < 0:
                 raise ValueError(f"{budget=} must be >= 0")
             case int():
-                _budget = TrialBudget(budget)
+                _minimum_normalized_fid = (
+                    minimum_normalized_fidelity_value or _minimum_normalized_fid or 0.01
+                )
+                _budget = TrialBudget(budget, _minimum_normalized_fid)
             case float():
                 _budget = CostBudget(budget)
             case TrialBudget():
@@ -396,6 +451,14 @@ class Problem:
                 raise TypeError(f"Unexpected type for `{budget=}`: {type(budget)}")
 
         _opt = optimizer[0] if isinstance(optimizer, tuple) else optimizer
+
+        match priors:
+            case None:
+                pass
+            case tuple():
+                priors = dict_to_configpriors(priors)
+            case _:
+                raise TypeError(f"Unexpected type for priors: {type(priors)}")
 
         if "single" not in _opt.support.fidelities:
             continuations = False
@@ -513,6 +576,7 @@ class Problem:
             "optimizer": self.optimizer.name,
             "optimizer_hyperparameters": self.optimizer_hyperparameters,
             "continuations": self.continuations,
+            "priors": configpriors_to_dict(self.priors) if self.priors else None,
         }
 
     @classmethod
@@ -548,12 +612,37 @@ class Problem:
 
         benchmark = benchmarks_dict[data["benchmark"]]
         optimizer = optimizers_dict[data["optimizer"]]
-        _obj = data["objectives"]
-        match _obj:
+        objectives = data["objectives"]
+        match objectives:
             case str():
-                objectives = (_obj, benchmark.metrics[_obj])
+                _obj = (objectives, benchmark.metrics[objectives])
             case list():
-                objectives = {name: benchmark.metrics[name] for name in _obj}
+                n_costs = 0 if benchmark.costs is None else len(benchmark.costs)
+                n_available = len(benchmark.metrics) + n_costs
+                if len(objectives) > n_available:  # type: ignore
+                    raise ValueError(
+                        f"{objectives=} is greater than the number of metrics and costs"
+                        f" in benchmark {benchmark.name} which has {n_available} objectives"
+                        " when combining metrics and costs",
+                    )
+                if benchmark.costs is None:
+                    for obj in objectives:  # type: ignore
+                        if obj not in benchmark.metrics:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics",
+                            )
+                    _obj = {name: benchmark.metrics[name] for name in objectives}  # type: ignore
+                else:
+                    _obj = {}
+                    for obj in objectives:  # type: ignore
+                        if obj in benchmark.metrics:
+                            _obj[obj] = benchmark.metrics[obj]
+                        elif obj in benchmark.costs:
+                            _obj[obj] = benchmark.costs[obj]
+                        else:
+                            raise ValueError(
+                                f"{obj=} not found in benchmark {benchmark.name} metrics or costs",
+                            )
             case _:
                 raise ValueError("Objectives must be a string or a list of strings")
 
@@ -593,14 +682,15 @@ class Problem:
                 raise ValueError("Budget type must be 'trial_budget' or 'cost_budget'")
 
         return cls(
-            objectives=objectives,
+            objectives=_obj,
             fidelities=fidelities,
             costs=costs,
             budget=budget,
             benchmark=benchmark,
-            optimizer=optimizer.__class__,
+            optimizer=optimizer,
             optimizer_hyperparameters=data["optimizer_hyperparameters"],
             continuations=data["continuations"],
+            priors = dict_to_configpriors(data["priors"]) if data.get("priors") else None,
         )
 
     @dataclass(kw_only=True)
@@ -700,4 +790,5 @@ class Problem:
                     f"Optimizer {who} does not support priors",
                     stacklevel=2,
                 )
-                problem.priors = {}
+                problem.priors = None
+                problem.name = problem.name.split(".priors=")[0]

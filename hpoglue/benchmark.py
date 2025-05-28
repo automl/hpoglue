@@ -66,7 +66,7 @@ class BenchmarkDescription:
     is_tabular: bool = False
     """Whether the benchmark is tabular."""
 
-    env: Env = field(default_factory=Env.empty())
+    env: Env = field(default_factory=Env.empty)
     """The environment needed to run this benchmark."""
 
     mem_req_mb: int = 1024
@@ -77,7 +77,7 @@ class BenchmarkDescription:
     Predefined points for the benchmark with their names and descriptions.
 
     Example:
-    ```
+    ``` python
     {
         "optimum": Config(
                         config_id="optimum",
@@ -100,6 +100,9 @@ class BenchmarkDescription:
 @dataclass(kw_only=True)
 class SurrogateBenchmark:
     """Defines the interface for a surrogate benchmark."""
+
+    name: str = field(init=False)
+    """The name of the Surrogate benchmark."""
 
     desc: BenchmarkDescription
     """The description of the benchmark."""
@@ -133,6 +136,9 @@ class SurrogateBenchmark:
 
     If not provided, the query will be called repeatedly to generate this.
     """
+
+    def __post_init__(self) -> None:
+        self.name = self.desc.name
 
     def trajectory(  # noqa: D102
         self,
@@ -179,6 +185,9 @@ class SurrogateBenchmark:
 class TabularBenchmark:
     """Defines the interface for a tabular benchmark."""
 
+    name: str
+    """The name of the Tabular benchmark."""
+
     desc: BenchmarkDescription
     """The description of the benchmark."""
 
@@ -218,6 +227,7 @@ class TabularBenchmark:
             id_key: The key in the table that we want to use as the id.
             config_keys: The keys in the table that we want to use as the config.
         """
+        self.name = desc.name
         # Make sure we work with a clean slate, no issue with index.
         table = table.reset_index()
 
@@ -264,6 +274,8 @@ class TabularBenchmark:
                 " Please drop it or rename it.",
             )
 
+        table[id_key] = table[id_key].astype(str)   # enforcing str for id
+
         # Remap their id column to `id`
         table = table.rename(columns={id_key: "id"})
 
@@ -292,15 +304,26 @@ class TabularBenchmark:
         self.config_keys = config_keys
         self.result_keys = result_keys
         self.fidelity_keys = fidelity_keys
-        self.config_space = [
+        self.config_space = self.get_tabular_config_space(table, config_keys)
+
+
+    @classmethod
+    def get_tabular_config_space(
+        cls,
+        table: pd.DataFrame,
+        config_keys: list[str],
+    ) -> list[Config]:
+        """Get the configuration space from the table."""
+        return [
             Config(config_id=str(i), values=config)  # enforcing str for id
             for i, config in enumerate(
-                self.table[config_keys]
+                table[config_keys]
                 .drop_duplicates()
                 .sort_values(by=config_keys)  # Sorting to ensure table config order is consistent
                 .to_dict(orient="records"),
             )
         ]
+
 
     def query(self, query: Query) -> Result:
         """Query the benchmark for a result."""
@@ -354,9 +377,9 @@ class TabularBenchmark:
 
         match query.fidelity:
             case None:
-                fidelities_retrieved = unspecified_fids
+                fidelities_retrieved = None
             case (key, value):
-                fidelities_retrieved = {**unspecified_fids, key: value}
+                fidelities_retrieved = (key, value)
             case Mapping():
                 fidelities_retrieved = {**unspecified_fids, **query.fidelity}
 
@@ -399,6 +422,9 @@ class TabularBenchmark:
 
 class FunctionalBenchmark:
     """Defines the interface for a functional benchmark."""
+
+    name: str = field(init=False)
+    """The name of the Functional benchmark."""
 
     desc: BenchmarkDescription
     """The description of the functional benchmark."""
@@ -471,6 +497,7 @@ class FunctionalBenchmark:
             extra: Extra information about the benchmark.
 
         """
+        self.name = name
         self.query = query
         self.config_space = config_space
         self.desc = BenchmarkDescription(
@@ -483,16 +510,11 @@ class FunctionalBenchmark:
             fidelities=fidelities,
             has_conditionals=False,
             is_tabular=False,
-            env=env or Env.empty(),
+            env=env,
             mem_req_mb=mem_req_mb,
             predefined_points=predefined_points,
             extra=extra,
         )
-
-    @property
-    def description(self) -> BenchmarkDescription:
-        """Return the BenchmarkDescription of a FunctionalBenchmark."""
-        return self.desc
 
 
     def load(
@@ -501,7 +523,6 @@ class FunctionalBenchmark:
     ) -> FunctionalBenchmark:
         """Load the FunctionalBenchmark."""
         return self
-
 
 
     def trajectory(

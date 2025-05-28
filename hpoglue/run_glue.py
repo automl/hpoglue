@@ -5,28 +5,30 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from hpoglue import Config, FunctionalBenchmark, Problem
 from hpoglue._run import _run
-from hpoglue.benchmark import FunctionalBenchmark
-from hpoglue.config import Config
-from hpoglue.problem import Problem
+from hpoglue.utils import dict_to_configpriors
 
 if TYPE_CHECKING:
     from hpoglue.benchmark import BenchmarkDescription
+    from hpoglue.budget import BudgetType
     from hpoglue.optimizer import Optimizer
 
 
-def run_glue(  # noqa: C901, PLR0912
+def run_glue(  # noqa: C901, PLR0912, PLR0913
     optimizer: type[Optimizer],
     benchmark: BenchmarkDescription | FunctionalBenchmark,
     objectives: int | str | list[str] = 1,
     fidelities: int | str | list[str] | None = None,
+    minimum_normalized_fidelity_value: float | None = None,
     optimizer_hyperparameters: Mapping[str, int | float] | None = None,
     run_name: str | None = None,
-    budget: int | float = 50,
+    budget: BudgetType| int | float = 50,
     seed: int = 0,
     *,
     continuations: bool = True,
-    priors: Mapping[str, Config | Mapping[str, Any]] = {},
+    use_continuations_as_budget: bool = False,
+    priors: tuple[str, Mapping[str, Config | Mapping[str, Any]]] | None = None,
 ) -> pd.DataFrame:
     """Run the glue function using the specified optimizer, benchmark, and hyperparameters.
 
@@ -39,6 +41,9 @@ def run_glue(  # noqa: C901, PLR0912
 
         fidelities: The fidelities for the benchmark.
 
+        minimum_normalized_fidelity_value: The minimum normalized fidelity value.
+            This is used to calculate the budget for Multi-fidelity Optimizers.
+
         optimizer_hyperparameters: Hyperparameters for the optimizer.
 
         run_name: An optional name for the run.
@@ -49,23 +54,44 @@ def run_glue(  # noqa: C901, PLR0912
 
         continuations: Whether to use continuations for the run.
 
+        use_continuations_as_budget: Whether to use continuations as budget.
+            This is only applicable for Multi-fidelity Optimizers.
+
         priors: Priors to use for the run.
+
+                Advised usage for priors:
+                --------------------------
+
+                ```python
+                            priors = (
+                                        prior_identifier,
+                                        {
+                                            "objective_name": Config(
+                                                config_id="some identifier for this config ID",
+                                                values={"hyperparameter name": "prior value"},
+                                            )
+                                        }
+                                    )
+                ```
+                NOTE:
+                    > The `prior_identifier` must be unique since it is used to identify the prior.
+
+                    > When generating the results, if priors are used the result includes
+                    prior=`prior_identifier` for identification.
+
+                    > We suggest the `prior_identifier` to be the name of the objective(s)
+                    over which the prior is defined + some unique identifier
+                    (eg: value1_good_value2_bad).
 
     Returns:
         The result of the _run function as a pandas DataFrame.
     """
-    # TODO: If the priors are dicts, then convert them into a config object.
-
     if isinstance(benchmark, FunctionalBenchmark):
-        benchmark = benchmark.description
+        benchmark = benchmark.desc
 
     if priors:
-        for k, v in priors.items():
-            if isinstance(v, Mapping):
-                priors[k] = Config(
-                    config_id=k,
-                    values=v,
-                )
+        priors = dict_to_configpriors(priors)
+
     optimizer_hyperparameters = optimizer_hyperparameters or {}
 
     problem = Problem.problem(
@@ -74,6 +100,7 @@ def run_glue(  # noqa: C901, PLR0912
         benchmark=benchmark,
         objectives=objectives,
         fidelities=fidelities,
+        minimum_normalized_fidelity_value=minimum_normalized_fidelity_value,
         budget=budget,
         continuations=continuations,
         priors=priors,
@@ -83,6 +110,7 @@ def run_glue(  # noqa: C901, PLR0912
         run_name=run_name,
         problem=problem,
         seed=seed,
+        use_continuations_as_budget=use_continuations_as_budget,
     )
     _df = pd.DataFrame([res._to_dict() for res in history])
     fidelities = problem.get_fidelities()
@@ -131,6 +159,6 @@ def run_glue(  # noqa: C901, PLR0912
     return _df.assign(
         benchmark=problem.benchmark.name,
         objectives=_objectives,
-        fidelities=fidelities,
-        costs=costs,
+        fidelities=_fidelities,
+        costs=_costs,
     )

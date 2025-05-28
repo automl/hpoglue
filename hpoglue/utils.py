@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import TypeAlias, TypeVar
+from typing import Any, TypeAlias, TypeVar
 
 import numpy as np
 import pandas as pd
 from more_itertools import roundrobin, take
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
+
+from hpoglue.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -152,3 +156,109 @@ def mix_n(n: int, _d1: Mapping[str, T], _d2: Mapping[str, T]) -> dict[str, T]:
     """
     return dict(take(n, roundrobin(_d1.items(), _d2.items())))
 
+
+def configpriors_to_dict(
+        priors: tuple[str, Mapping[str, Config]]
+    ) -> tuple[str, Mapping[str, Mapping[str, Any]]]:
+    """Converts a tuple of priors to a dictionary.
+
+    Args:
+        priors: A tuple with the priors as Config objects..
+
+    Returns:
+        A tuple with the priors converted to dictionaries.
+    """
+    assert isinstance(priors, tuple | list) and len(priors) == 2, (  # noqa: PLR2004, PT018
+        "Priors should be a tuple or list of length 2 with the format: "
+        "(str, Mapping[str, Config])."
+    )
+    name, _priors = priors
+    prior_dict = {}
+    for obj, prior in _priors.items():
+        match prior:
+            case Config():
+                prior_dict[obj] = prior.values
+            case dict():
+                prior_dict[obj] = prior
+            case _:
+                raise TypeError(f"Unsupported type for priors: {type(prior)}")
+
+    return name, prior_dict
+
+
+def dict_to_configpriors(
+    priors: tuple[str, Mapping[str, Mapping[str, Any]]]
+) -> tuple[str, Mapping[str, Config]]:
+    """Converts priors given as dictionaries into Config objects.
+
+    Args:
+        priors: The tuple of str and dictionary of priors to convert,
+        with the priors themselves as dictionaries.
+
+    Returns:
+        A tuple with the priors converted into Config objects.
+    """
+    assert isinstance(priors, tuple | list) and len(priors) == 2, (  # noqa: PLR2004, PT018
+        "Priors should be a tuple or list of length 2 with the format: "
+        "(str, Mapping[str, dict[str, Any]])."
+    )
+    name, _priors = priors
+    prior_dict = {}
+    for obj, prior in _priors.items():
+        match prior:
+            case dict():
+                prior_dict[obj] = Config(
+                    config_id=obj,
+                    values=prior,
+                )
+            case Config():
+                prior_dict[obj] = prior
+            case _:
+                raise TypeError(f"Unsupported type for priors: {type(prior)}")
+
+    return name, prior_dict
+
+
+def env_pkg_version_compat(
+    package1: str,
+    package2: str,
+):
+    """Check if two package versions are compatible.
+
+    Args:
+        package1: The first package version.
+        package2: The second package version.
+
+    Returns:
+        bool: True if the package versions are compatible, False otherwise.
+    """
+    name1, key1, spec1 = _split_pkg_ver(package1)
+    name2, key2, spec2 = _split_pkg_ver(package2)
+
+    if name1 != name2:
+        return True
+
+    if not spec1 or not spec2:
+        return True
+
+    key_spec1, key_spec2 = SpecifierSet(key1 + spec1), SpecifierSet(key2 + spec2)
+
+    return bool(key_spec1.contains(Version(spec2)) or key_spec2.contains(Version(spec1)))
+
+
+def _split_pkg_ver(package_name: str) -> tuple[str, str, str]:
+    """Split package name into name, operator, and version.
+
+    Args:
+        package_name: The package name to split.
+
+    Returns:
+        tuple: A tuple containing the package name and specifier set.
+    """
+    version_constraints = ["==", ">=", "<=", ">", "<"]
+    for constraint in version_constraints:
+        if constraint in package_name:
+            package_name, version_spec = package_name.split(constraint)
+            return package_name, constraint, version_spec
+
+    return package_name, "", ""

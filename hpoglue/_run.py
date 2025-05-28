@@ -90,6 +90,7 @@ def _run(
     run_name: str | None = None,
     on_error: Literal["raise", "continue"] = "raise",
     progress_bar: bool = False,
+    use_continuations_as_budget: bool = False,
 ) -> list[Result]:
     run_name = run_name if run_name is not None else problem.name
     benchmark = problem.benchmark.load(problem.benchmark)
@@ -99,6 +100,14 @@ def _run(
         seed=seed,
         **problem.optimizer_hyperparameters,
     )
+
+    if use_continuations_as_budget and not problem.continuations:
+        warnings.warn(
+            f"Optimizer {problem.optimizer.name} does not support continuations."
+            "\nSetting use_continuations_as_budget to False.",
+            stacklevel=2,
+        )
+        use_continuations_as_budget = False
 
     match problem.budget:
         case TrialBudget(
@@ -114,6 +123,7 @@ def _run(
                 on_error=on_error,
                 minimum_normalized_fidelity=minimum_normalized_fidelity,
                 progress_bar=progress_bar,
+                use_continuations_as_budget=use_continuations_as_budget,
             )
         case CostBudget():
             raise NotImplementedError("CostBudget not yet implemented")
@@ -134,8 +144,11 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
     on_error: Literal["raise", "continue"],
     minimum_normalized_fidelity: float,
     progress_bar: bool,
+    use_continuations_as_budget: bool,
 ) -> list[Result]:
     used_budget: float = 0.0
+    used_trial_budget: float = 0.0
+    continuations_used_budget: float = 0.0
 
     history: list[Result] = []
 
@@ -160,41 +173,60 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                         case Mapping():
                             raise NotImplementedError("Manyfidelity not yet implemented")
                         case (fid_name, fid_value):
-                            config = Conf(query.config.to_tuple(problem.precision), fid_value)
-                            exist_already = runhist.add_conf(config=config, fid_name=fid_name)
-
-                            if exist_already:
-                                # NOTE: Not a cheap operation since we don't store the costs
-                                # in the continuations dict
-                                result = None
-                                for existing_result in history:
-                                    tup = existing_result.config.to_tuple(problem.precision)
-                                    if Conf(tup, fid_value) == config:
-                                        if query.config_id == existing_result.query.config_id:
-                                            raise ValueError(
-                                                "Resampled configuration has same config_id"
-                                                " in history!"
-                                            )
-                                        existing_result.query = query
-                                        result = existing_result
-                                        break
-
-                                if result is None:
-                                    raise ValueError(
-                                        "Resampled configuration not found in history!"
-                                    )
-
-                            else:
+                            if not problem.continuations:
                                 result = benchmark.query(query)
-                                if problem.continuations:
-                                    result.continuations_cost = runhist.get_continuations_cost(
-                                        config=config,
-                                        fid_name=fid_name,
-                                    )
+                            else:
+                                config = Conf(query.config.to_tuple(problem.precision), fid_value)
+                                exist_already = runhist.add_conf(config=config, fid_name=fid_name)
+
+                                if exist_already:
+                                    # NOTE: Not a cheap operation since we don't store the costs
+                                    # in the continuations dict
+                                    result = None
+                                    for existing_result in history:
+                                        tup = existing_result.config.to_tuple(problem.precision)
+                                        if Conf(tup, fid_value) == config:
+                                            if query.config_id == existing_result.query.config_id:
+                                                raise ValueError(
+                                                    "Resampled configuration has same config_id"
+                                                    " in history!"
+                                                )
+                                            existing_result.query = query
+                                            result = existing_result
+                                            break
+
+                                    if result is None:
+                                        raise ValueError(
+                                            "Resampled configuration not found in history!"
+                                        )
+
+                                else:
+                                    result = benchmark.query(query)
+                                    if problem.continuations:
+                                        result.continuations_cost = runhist.get_continuations_cost(
+                                            config=config,
+                                            fid_name=fid_name,
+                                        )
                         case _:
                             raise TypeError(
                                 "Fidelity must be None, tuple(str, value), or Mapping[str, fid]"
                                 f" but got: {query.fidelity}"
+                            )
+
+                    match result.fidelity:
+                        case None:
+                            _fid_value = None
+                        case (name, v):
+                            if problem.continuations:
+                                _fid_value = (name, result.continuations_cost)
+                            else:
+                                _fid_value = (name, v)
+                        case Mapping():
+                            _fid_value = result.fidelity
+                        case _:
+                            raise TypeError(
+                                "Fidelity must be None, tuple or Mapping. "
+                                f"GOT: {type(result.fidelity)}"
                             )
 
                     budget_cost = _trial_budget_cost(
@@ -203,9 +235,30 @@ def _run_problem_with_trial_budget(  # noqa: C901, PLR0912, PLR0915
                         minimum_normalized_fidelity=minimum_normalized_fidelity,
                     )
 
-                    used_budget += budget_cost
+                    if problem.continuations:
+
+                        continuations_budget_cost = _trial_budget_cost(
+                            value=_fid_value,
+                            problem=problem,
+                            minimum_normalized_fidelity=minimum_normalized_fidelity,
+                        )
+
+                        continuations_used_budget += continuations_budget_cost
+                        result.continuations_budget_cost = continuations_budget_cost
+                        result.continuations_budget_used_total = continuations_used_budget
+
+                    used_trial_budget += budget_cost
                     result.budget_cost = budget_cost
-                    result.budget_used_total = used_budget
+                    result.budget_used_total = used_trial_budget
+
+                    if use_continuations_as_budget and problem.continuations:
+                        used_budget = continuations_used_budget
+                    else:
+                        used_budget = used_trial_budget
+
+                    # For Fidelity budgets (fractional TrialBudget cost)
+                    if used_budget > budget_total:
+                        break
 
                     optimizer.tell(result)
                     history.append(result)

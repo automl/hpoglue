@@ -29,13 +29,19 @@ class Result:
     """Everything returned by the benchmark for a given query at the fideltiy."""
 
     continuations_cost: float = np.nan
-    """The coninuations cost if run.continuations set to True."""
+    """The coninuations cost if continuations is set to True."""
 
     budget_cost: float = np.nan
     """The amount of budget used to generate this result."""
 
+    continuations_budget_cost: float = np.nan
+    """The amount of budget cost if continuations is set to True."""
+
     budget_used_total: float = np.nan
     """The amount of budget used in total."""
+
+    continuations_budget_used_total: float = np.nan
+    """The amount of budget used in total if continuations is set to True."""
 
     trajectory: pd.DataFrame | None = None
     """If given, the trajectory of the query up to the given fidelity.
