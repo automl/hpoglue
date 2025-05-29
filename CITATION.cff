@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Basu
+    given-names: Soham
+    affiliation: "University of Freiburg, Germany"
+  - family-names: Mallik
+    given-names: Neeratyoy
+    affiliation: "University of Freiburg, Germany"
+  - family-names: Bergman
+    given-names: Eddie
+    affiliation: "University of Freiburg, Germany"
+  - family-names: Hutter
+    given-names: Frank
+    affiliation: "University of Freiburg, Germany"
+title: "hpoglue"
+version: 0.2.5
+date-released: 2025-05-28
+url: "https://github.com/automl/hpoglue"

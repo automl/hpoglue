@@ -148,3 +148,16 @@ environ = Env(
     # appropriate python executable from the environment's absolute path
 )
 ```
+
+## Citation
+
+If you use `hpoglue` for your research, please cite it as below:
+
+```bibtex
+@software{Basu_hpolgue_2024,
+  author = {Basu, Soham and Mallik, Neeratyoy and Bergman, Eddie and Hutter, Frank},
+  title = {hpoglue},
+  year = {2025},
+  url = {https://github.com/automl/hpoglue},
+  version = {0.2.5}
+}
